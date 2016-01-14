@@ -46,7 +46,8 @@ keywords = [
 
 ]
 
-comment_nesting_level = 0
+tokens = [] # list of tokens determined from input file
+comment_nesting_level = 0 # current level of comment nesting
 for line in file.readlines():
     line = line.replace("\n", "").replace("\t", "")
 
@@ -57,35 +58,46 @@ for line in file.readlines():
 
     active_token = ""  # token currently being built by the lexical analyzer
     for char in line:
-        # Process comments
+        token_completed = False
+        print("Char: " + char)
+
+        # check if previously formed token is prepared to be added to list
         if active_token == "/":
             if char == "*":
                 comment_nesting_level += 1
                 print("We do have a comment! Nesting Level: " + str(comment_nesting_level))
-                active_token = ""
-                continue
+                token_completed = True
             else:
                 print("Nope, not a comment... keep moving...")
 
-        if active_token == "*":
+        elif active_token == "*":
             if char == "/":
                 comment_nesting_level -= 1
                 print("We are closing a comment! Nesting Level: " + str(comment_nesting_level))
-                active_token = ""
-                continue
+                token_completed = True
             else:
                 print("Nope, we are still in a comment... keep moving...")
 
+        # Add characters to active token, if token isn't complete
         if char == "/":
             print("We may have a comment...")
-            active_token += char
 
         elif char == "*":
             print("We may be closing a comment...")
-            active_token += char
 
         elif char.isalpha():
+            print("We have a keyword/identifier...")
+
             active_token += char
+
+        if token_completed:
+            active_token = ""
+
+        print("Active Token: " + active_token + "\n")
+
+        if token_completed:
+            print("Token completed, \nActive Token: ")
+            active_token = ""
 
 
 print("---------------------------------------\n")

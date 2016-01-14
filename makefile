@@ -1,3 +1,3 @@
 all:
-	@chmod 777 p3
-	@echo no makefile needed, developed in python!
+	@chmod 777 p1
+	@echo permissions to executable updated, developed in Python 3
