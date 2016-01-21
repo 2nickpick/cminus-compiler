@@ -1,0 +1,23 @@
+/* TEST */
+/* /* TWO IN ONE LINE */ */
+// Single line comment
+
+/* Multiline
+    Comment
+*/
+
+poop = 4; /* a = 5; */
+
+/*/
+/ */
+
+// we can't have that /* 4 + 5; */ 95
+
+/*/ **/
+
+we can't have that /* 4 + 5; */ 95z
+
+/*/*/****This**********/*/    */
+
+price = 4; /* 85.07E-7 */ cost = 5;
+
