@@ -42,6 +42,9 @@ for line in file.readlines():
 
     print("\nINPUT: " + line)
 
+    #
+    #   Begin Line-by-Line Processing
+    #
     current_position_in_line = 0
     while current_position_in_line < len(line):
 
@@ -49,6 +52,7 @@ for line in file.readlines():
         token_complete = False
         lexical_analyzer.token_type = ""
 
+        # Determine a potential token type
         if char is "/":
             lexical_analyzer.token_type = "OPERATOR_OR_COMMENT"
 
@@ -90,6 +94,7 @@ for line in file.readlines():
 
         lexical_analyzer.active_token = char
 
+        # If token is not a single-character token, let's begin collecting characters for the token
         while not token_complete:
 
             # let's prep the next character

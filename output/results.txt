@@ -1,0 +1,324 @@
+Lexical Analyzer
+Written by Nicholas Pickering
+
+INPUT: /*  A program to perform selection sort on a 10
+
+INPUT: element array  */
+
+INPUT: int x[10];
+[KEYWORD]		int
+[IDENTIFIER]	x
+[OPERATORS]		[
+[NUMBER]		10
+[OPERATORS]		]
+[OPERATORS]		;
+
+INPUT: int minloc( int a[], int low, int high )
+[KEYWORD]		int
+[IDENTIFIER]	minloc
+[OPERATORS]		(
+[KEYWORD]		int
+[IDENTIFIER]	a
+[OPERATORS]		[
+[OPERATORS]		]
+[OPERATORS]		,
+[KEYWORD]		int
+[IDENTIFIER]	low
+[OPERATORS]		,
+[KEYWORD]		int
+[IDENTIFIER]	high
+[OPERATORS]		)
+
+INPUT: {  int i; int x; int k;
+[OPERATORS]		{
+[KEYWORD]		int
+[IDENTIFIER]	i
+[OPERATORS]		;
+[KEYWORD]		int
+[IDENTIFIER]	x
+[OPERATORS]		;
+[KEYWORD]		int
+[IDENTIFIER]	k
+[OPERATORS]		;
+
+INPUT: k = low;
+[IDENTIFIER]	k
+[OPERATORS]		=
+[IDENTIFIER]	low
+[OPERATORS]		;
+
+INPUT: x = a[low];
+[IDENTIFIER]	x
+[OPERATORS]		=
+[IDENTIFIER]	a
+[OPERATORS]		[
+[IDENTIFIER]	low
+[OPERATORS]		]
+[OPERATORS]		;
+
+INPUT: i = low + 1;
+[IDENTIFIER]	i
+[OPERATORS]		=
+[IDENTIFIER]	low
+[OPERATORS]		+
+[NUMBER]		1
+[OPERATORS]		;
+
+INPUT: while (i < high)
+[KEYWORD]		while
+[OPERATORS]		(
+[IDENTIFIER]	i
+[OPERATORS]		<
+[IDENTIFIER]	high
+[OPERATORS]		)
+
+INPUT: { if (a[i] < x)
+[OPERATORS]		{
+[KEYWORD]		if
+[OPERATORS]		(
+[IDENTIFIER]	a
+[OPERATORS]		[
+[IDENTIFIER]	i
+[OPERATORS]		]
+[OPERATORS]		<
+[IDENTIFIER]	x
+[OPERATORS]		)
+
+INPUT: { x = a[i];
+[OPERATORS]		{
+[IDENTIFIER]	x
+[OPERATORS]		=
+[IDENTIFIER]	a
+[OPERATORS]		[
+[IDENTIFIER]	i
+[OPERATORS]		]
+[OPERATORS]		;
+
+INPUT: k = i; }
+[IDENTIFIER]	k
+[OPERATORS]		=
+[IDENTIFIER]	i
+[OPERATORS]		;
+[OPERATORS]		}
+
+INPUT: i = i + 1;
+[IDENTIFIER]	i
+[OPERATORS]		=
+[IDENTIFIER]	i
+[OPERATORS]		+
+[NUMBER]		1
+[OPERATORS]		;
+
+INPUT: }
+[OPERATORS]		}
+
+INPUT: return k;
+[KEYWORD]		return
+[IDENTIFIER]	k
+[OPERATORS]		;
+
+INPUT: }
+[OPERATORS]		}
+
+INPUT: void sort( int a[], int low, int high)
+[KEYWORD]		void
+[IDENTIFIER]	sort
+[OPERATORS]		(
+[KEYWORD]		int
+[IDENTIFIER]	a
+[OPERATORS]		[
+[OPERATORS]		]
+[OPERATORS]		,
+[KEYWORD]		int
+[IDENTIFIER]	low
+[OPERATORS]		,
+[KEYWORD]		int
+[IDENTIFIER]	high
+[OPERATORS]		)
+
+INPUT: {  int i; int k;
+[OPERATORS]		{
+[KEYWORD]		int
+[IDENTIFIER]	i
+[OPERATORS]		;
+[KEYWORD]		int
+[IDENTIFIER]	k
+[OPERATORS]		;
+
+INPUT: i = low;
+[IDENTIFIER]	i
+[OPERATORS]		=
+[IDENTIFIER]	low
+[OPERATORS]		;
+
+INPUT: while (i < high-1)
+[KEYWORD]		while
+[OPERATORS]		(
+[IDENTIFIER]	i
+[OPERATORS]		<
+[IDENTIFIER]	high
+[OPERATORS]		-
+[NUMBER]		1
+[OPERATORS]		)
+
+INPUT: { int t;
+[OPERATORS]		{
+[KEYWORD]		int
+[IDENTIFIER]	t
+[OPERATORS]		;
+
+INPUT: k = minloc(a,i,high);
+[IDENTIFIER]	k
+[OPERATORS]		=
+[IDENTIFIER]	minloc
+[OPERATORS]		(
+[IDENTIFIER]	a
+[OPERATORS]		,
+[IDENTIFIER]	i
+[OPERATORS]		,
+[IDENTIFIER]	high
+[OPERATORS]		)
+[OPERATORS]		;
+
+INPUT: t = a[k];
+[IDENTIFIER]	t
+[OPERATORS]		=
+[IDENTIFIER]	a
+[OPERATORS]		[
+[IDENTIFIER]	k
+[OPERATORS]		]
+[OPERATORS]		;
+
+INPUT: a[k] = a[i];
+[IDENTIFIER]	a
+[OPERATORS]		[
+[IDENTIFIER]	k
+[OPERATORS]		]
+[OPERATORS]		=
+[IDENTIFIER]	a
+[OPERATORS]		[
+[IDENTIFIER]	i
+[OPERATORS]		]
+[OPERATORS]		;
+
+INPUT: a[i] = t;
+[IDENTIFIER]	a
+[OPERATORS]		[
+[IDENTIFIER]	i
+[OPERATORS]		]
+[OPERATORS]		=
+[IDENTIFIER]	t
+[OPERATORS]		;
+
+INPUT: i = i + 1;
+[IDENTIFIER]	i
+[OPERATORS]		=
+[IDENTIFIER]	i
+[OPERATORS]		+
+[NUMBER]		1
+[OPERATORS]		;
+
+INPUT: }
+[OPERATORS]		}
+
+INPUT: }
+[OPERATORS]		}
+
+INPUT: void main(void)
+[KEYWORD]		void
+[IDENTIFIER]	main
+[OPERATORS]		(
+[KEYWORD]		void
+[OPERATORS]		)
+
+INPUT: { int i;
+[OPERATORS]		{
+[KEYWORD]		int
+[IDENTIFIER]	i
+[OPERATORS]		;
+
+INPUT: i = 0;
+[IDENTIFIER]	i
+[OPERATORS]		=
+[NUMBER]		0
+[OPERATORS]		;
+
+INPUT: while(i < 10)
+[KEYWORD]		while
+[OPERATORS]		(
+[IDENTIFIER]	i
+[OPERATORS]		<
+[NUMBER]		10
+[OPERATORS]		)
+
+INPUT: { x[i] = input();
+[OPERATORS]		{
+[IDENTIFIER]	x
+[OPERATORS]		[
+[IDENTIFIER]	i
+[OPERATORS]		]
+[OPERATORS]		=
+[IDENTIFIER]	input
+[OPERATORS]		(
+[OPERATORS]		)
+[OPERATORS]		;
+
+INPUT: i = i + 1;  }
+[IDENTIFIER]	i
+[OPERATORS]		=
+[IDENTIFIER]	i
+[OPERATORS]		+
+[NUMBER]		1
+[OPERATORS]		;
+[OPERATORS]		}
+
+INPUT: sort(x,0,10);
+[IDENTIFIER]	sort
+[OPERATORS]		(
+[IDENTIFIER]	x
+[OPERATORS]		,
+[NUMBER]		0
+[OPERATORS]		,
+[NUMBER]		10
+[OPERATORS]		)
+[OPERATORS]		;
+
+INPUT: i = 0;
+[IDENTIFIER]	i
+[OPERATORS]		=
+[NUMBER]		0
+[OPERATORS]		;
+
+INPUT: while(i < 10)
+[KEYWORD]		while
+[OPERATORS]		(
+[IDENTIFIER]	i
+[OPERATORS]		<
+[NUMBER]		10
+[OPERATORS]		)
+
+INPUT: { output(x[i]);
+[OPERATORS]		{
+[IDENTIFIER]	output
+[OPERATORS]		(
+[IDENTIFIER]	x
+[OPERATORS]		[
+[IDENTIFIER]	i
+[OPERATORS]		]
+[OPERATORS]		)
+[OPERATORS]		;
+
+INPUT: i = i + 1; }
+[IDENTIFIER]	i
+[OPERATORS]		=
+[IDENTIFIER]	i
+[OPERATORS]		+
+[NUMBER]		1
+[OPERATORS]		;
+[OPERATORS]		}
+
+INPUT: }
+[OPERATORS]		}
+---------------------------------------
+
+End Lexical Analysis

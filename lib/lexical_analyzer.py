@@ -10,6 +10,7 @@ tokens = []
 active_token = ""
 token_type = ""
 
+# C- keywords are defined here
 keywords = [
     "else",
     "if",
@@ -22,6 +23,7 @@ keywords = [
     "continue"
 ]
 
+# C- operators and special symbols are defined here
 operators = [
     "+",
     "-",
@@ -37,6 +39,8 @@ operators = [
     "}"
 ]
 
+# C- equality operators separated for simplified processing
+# These tokens may be longer than one character - typical operators can skip the extra processing
 extendable_operators = [
     "<",
     ">",
@@ -44,7 +48,7 @@ extendable_operators = [
     "=",
 ]
 
-
+# Add a token to the collection to be passed to the parser
 def process_complete_token():
     global active_token, token_type
     active_token = active_token.strip()

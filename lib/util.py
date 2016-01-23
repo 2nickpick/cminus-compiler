@@ -4,6 +4,7 @@
 #   This module contains many functions and objects reused throughout the software
 #
 #
+import sys
 from collections import deque
 
 #   Error
