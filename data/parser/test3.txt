@@ -1,0 +1,13 @@
+int main(void) {
+
+    int x;
+
+    totes = x = foo = 23; /* foo(bar); */
+    totes = x = foo = foo(bar);
+
+    if( tets > y + foo(bar[twentyfive]) + (87 * 4)) {
+        test(x);
+    } else
+        test(y);
+
+}

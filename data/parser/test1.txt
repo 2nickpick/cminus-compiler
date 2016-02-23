@@ -1,0 +1,22 @@
+int x;
+void y;
+float z;
+
+int a[12];
+
+int foo(int t, void soup, float bar, int tests) {
+
+    call(4, 5);
+
+    if(x > y) {
+        print(5);
+    }
+
+
+    if(y > (x + 4) * foo[20 - bar(fifty)])
+        print(10);
+
+
+    return 800E+9 + foo[3];
+
+}

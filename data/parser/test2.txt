@@ -1,0 +1,5 @@
+int main(void) {
+    if(key(4 + 8 + 90 + (x(fortyfive) + (foo[5 + 5 + bar(twentythree)])))) {
+        return 1;
+    }
+}
