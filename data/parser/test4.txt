@@ -1,53 +1,21 @@
-/* A program to perform selection sort on a 10 element array */
+;
+int bar[56E4];
+void baz;
 
-int x[45];
+int foobar(int one, int two[], void three) {
+   int foo;
+   int bar[56E4];
+   void baz;
 
-int minloc ( int a[] , int low, int high, float harry)
-{
-   int i; int x; int k;;
-   k = low;
-   x = a[45E-9];
-   i = low + 1;
-   while (i < high)
-   {   if (a[i] < x)
-      {   x = a[i];
-         k = i; }
-         i = i + 1;;;;;;;;;;;;;;
+   if (foo == 1)
+   {
+       if (bar == 3)
+           output(3);
    }
-      return k;
+   else
+       output(2, foo, foo[bar], foo[bar/2]);
+
+   return baz[45];
 }
 
-void sort ( int a[], int low, int high)
-{
-   int i; int k;
-   low = 0;
-   high = 10;
-   i = low;
-   while (i < high-1)
-   {
-      int t;
-      k = minloc(a,i,high);
-      t = a[k];
-      a[k] = a[i];
-      a[i] = t;
-      i = i + 1;
-   }
-}
-
-void main(void)
-{
-   int i;
-   i = 0;
-   while (i < 10)
-   {
-      x[i] = input();
-      i = i + 1;
-   }
-   sort(x,0,10);
-   i = 0;
-   while (i < 10)
-   {
-      output(x[i]);
-      i = i + 1;
-   }
-}
+void quux(void) {}

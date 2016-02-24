@@ -40,7 +40,7 @@ if len(tokens) > 0:
 parser = Parser(tokens)
 parse_result = parser.parse()
 
-print(parse_result)
+print(parse_result, end="",flush=True)
 
 # print("---------------------------------------\n")
 #

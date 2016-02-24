@@ -33,9 +33,9 @@ class Parser(object):
         if len(self.tokens) == 0 and self.accepted is True:
             if self.debug:
                 print(self.tokens)
-            return "ACCEPT"
+            return 'ACCEPT'
         else:
-            return "REJECT"
+            return 'REJECT'
 
     # program -> declaration-list
     def program(self):
@@ -43,7 +43,7 @@ class Parser(object):
         self.declaration_list()
         self.end()
 
-    # declaration-list -> var-declaration | function-declaration
+    # declaration-list -> var-declaration | function-declaration | empty-declaration
     def declaration_list(self):
         self.start()
         while len(self.tokens) > 0 and self.accepted is not False:
@@ -53,22 +53,26 @@ class Parser(object):
     # declaration -> type-specifier ID ; | type-specifier ID [ NUM ] ;
     def declaration(self):
         self.start()
-        self.type_specifier()
-        self.match("IDENTIFIER")
 
-        if self.current_token == ["(", "OPERATORS"]:
-            self.function_declaration()
-        elif self.current_token and self.current_token[0] in ['[', ';']:
-            self.var_declaration()
+        if self.current_token == [";", "OPERATORS"]:
+            self.empty_declaration()
+        else:
+            self.type_specifier()
+            self.match("IDENTIFIER")
+
+            if self.current_token == ["(", "OPERATORS"]:
+                self.function_declaration()
+            elif self.current_token and self.current_token[0] in ['[', ';']:
+                self.var_declaration()
 
         self.end()
 
-    # var-declaration -> type-specifier ID ; | type-specifier ID [ NUM ] ;
+    # var-declaration -> type-specifier ID ; | type-specifier ID [ NUM ] ; | type-specifier ID [ FLOAT ] ;
     def var_declaration(self):
         self.start()
         if self.current_token == ['[', 'OPERATORS']:
             self.match("OPERATORS", "[")
-            self.integer()
+            self.any_number()
             self.match("OPERATORS", "]")
 
         self.match("OPERATORS", ";")
@@ -246,6 +250,15 @@ class Parser(object):
 
     # empty-statement -> ;
     def empty_statement(self):
+
+        self.start()
+
+        self.match("OPERATORS", ";")
+
+        self.end()
+
+    # empty-declaration -> ;
+    def empty_declaration(self):
 
         self.start()
 
@@ -472,7 +485,7 @@ class Parser(object):
     # an error has occured, reject the input
     def reject(self, token_type, token_value):
         self.accepted = False
-        print("REJECT")
+        print("REJECT", end="",flush=True)
         if self.debug:
             print("Current Token: " + str(self.current_token))
             print("Failed to match [" + str(token_type) + ", " + str(token_value) + "] in " + str(inspect.stack()[2][3]))
