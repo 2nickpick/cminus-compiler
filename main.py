@@ -8,6 +8,7 @@
 #
 #
 
+from __future__ import print_function
 import sys
 from lib import util
 from lib.lexical_analyzer import LexicalAnalyzer
@@ -40,7 +41,7 @@ if len(tokens) > 0:
 parser = Parser(tokens)
 parse_result = parser.parse()
 
-print(parse_result, end="",flush=True)
+print(parse_result, end="")
 
 # print("---------------------------------------\n")
 #

@@ -4,6 +4,7 @@
 #   This module contains functions and objects for use by the Recursive Descent Parser
 #
 #
+from __future__ import print_function
 import sys
 import inspect
 
@@ -485,7 +486,7 @@ class Parser(object):
     # an error has occured, reject the input
     def reject(self, token_type, token_value):
         self.accepted = False
-        print("REJECT", end="",flush=True)
+        print("REJECT", end="")
         if self.debug:
             print("Current Token: " + str(self.current_token))
             print("Failed to match [" + str(token_type) + ", " + str(token_value) + "] in " + str(inspect.stack()[2][3]))
