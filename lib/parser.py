@@ -31,7 +31,7 @@ class Parser(object):
         # if self.debug:
         #     print(self.tokens)
 
-        if len(self.tokens) == 0 and self.accepted is True:
+        if len(self.tokens) == 0 and self.current_token is None and self.accepted is True:
             if self.debug:
                 print(self.tokens)
             return 'ACCEPT'
@@ -143,12 +143,21 @@ class Parser(object):
 
         self.start()
 
-        self.type_specifier()
-        self.match("IDENTIFIER")
+        if self.current_token == ["void", "KEYWORD"]:
+            self.type_specifier()
+            if self.current_token and self.current_token[1] == "IDENTIFIER":
+                self.match("IDENTIFIER")
 
-        if self.current_token == ['[', "OPERATORS"]:
-            self.match('OPERATORS', '[')
-            self.match('OPERATORS', ']')
+                if self.current_token == ['[', "OPERATORS"]:
+                    self.match('OPERATORS', '[')
+                    self.match('OPERATORS', ']')
+        else:
+            self.type_specifier()
+            self.match("IDENTIFIER")
+
+            if self.current_token == ['[', "OPERATORS"]:
+                self.match('OPERATORS', '[')
+                self.match('OPERATORS', ']')
 
         self.end()
 

@@ -14,9 +14,9 @@ void main(void app, void test)
 {   int x; int y;
     void internal;
 
-    internal = 4;
-
     void a;
+
+    internal = 4;
 
     x = input(); y = input();
     output(gcd(x,y));
