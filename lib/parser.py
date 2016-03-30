@@ -7,6 +7,7 @@
 from __future__ import print_function
 import sys
 import inspect
+from lib import symbol_table
 
 
 class Parser(object):
@@ -18,7 +19,14 @@ class Parser(object):
         self.indentation = 0
         self.tokens = tokens
         self.debug = False
+        self.debug_semantics = True
         self.accepted = True
+        self.symbol_table = symbol_table.SymbolTable()
+        self.current_symbol = None
+        self.scope = 0
+
+        self.parsing_main = False
+        self.main_function_exists = False
 
         self.last_token = None
         self.current_token = self.tokens.pop()
@@ -30,6 +38,16 @@ class Parser(object):
 
         # if self.debug:
         #     print(self.tokens)
+
+        self.symbol_table.destroy_scope(0)
+
+        if not self.main_function_exists:
+            self.reject_semantic("Main function undefined")
+
+        if self.debug_semantics:
+            print("ID\tType\tValue\tScope")
+            for symbol in self.symbol_table.symbols:
+                print(str(symbol))
 
         if len(self.tokens) == 0 and self.current_token is None and self.accepted is True:
             if self.debug:
@@ -58,13 +76,28 @@ class Parser(object):
         if self.current_token == [";", "OPERATORS"]:
             self.empty_declaration()
         else:
+            self.current_symbol = symbol_table.Symbol()
+            self.current_symbol.set_type(self.current_token[0])
+            self.current_symbol.set_scope(self.scope)
             self.type_specifier()
+
+            self.current_symbol.set_identifier(self.current_token[0])
+            if self.current_token[0] == "main":
+                self.parsing_main = True
+
             self.match("IDENTIFIER")
+
+            if not self.symbol_table.add_symbol(self.current_symbol):
+                self.reject_semantic("Symbol could not be added, " + self.current_symbol.identifier)
+
+            self.current_symbol = None
 
             if self.current_token == ["(", "OPERATORS"]:
                 self.function_declaration()
             elif self.current_token and self.current_token[0] in ['[', ';']:
                 self.var_declaration()
+
+            self.parsing_main = False
 
         self.end()
 
@@ -87,6 +120,10 @@ class Parser(object):
         self.params()
         self.match("OPERATORS", ")")
         self.compound_statement()
+
+        if self.parsing_main is True and self.accepted is not False:
+            self.main_function_exists = True
+
         self.end()
 
     # type-specifier -> int | void | float
@@ -165,9 +202,12 @@ class Parser(object):
     def compound_statement(self):
         self.start()
         self.match("OPERATORS", "{")
+        self.scope += 1
         self.local_declarations()
         self.statement_list()
         self.match("OPERATORS", "}")
+        self.symbol_table.destroy_scope(self.scope)
+        self.scope -= 1
         self.end()
 
     # local-declarations -> local-declarations var-declaration | @
@@ -175,9 +215,20 @@ class Parser(object):
         self.start()
         while self.current_token and self.current_token[0] in ["int", "float", "void"] \
                 and self.accepted is not False:
+
+            self.current_symbol = symbol_table.Symbol()
+            self.current_symbol.set_type(self.current_token[0])
+            self.current_symbol.set_scope(self.scope)
             self.type_specifier()
+
+            self.current_symbol.set_identifier(self.current_token[0])
             self.match("IDENTIFIER")
             self.var_declaration()
+
+            if not self.symbol_table.add_symbol(self.current_symbol):
+                self.reject_semantic("Symbol could not be added, " + self.current_symbol.identifier)
+
+            self.current_symbol = None
 
         self.end()
 
@@ -495,12 +546,18 @@ class Parser(object):
             self.current_token = None
             return
 
-    # an error has occured, reject the input
+    # an error has occurred, reject the input
     def reject(self, token_type, token_value):
         self.accepted = False
         if self.debug:
             print("Current Token: " + str(self.current_token))
             print("Failed to match [" + str(token_type) + ", " + str(token_value) + "] in " + str(inspect.stack()[2][3]))
+
+    # a semantic error has occurred, reject the input
+    def reject_semantic(self, reason):
+        self.accepted = False
+        if self.debug_semantics:
+            print("Semantic Rejection: " + reason)
 
     # debug output for entering a recursive function
     def start(self):

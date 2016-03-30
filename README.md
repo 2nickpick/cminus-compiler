@@ -10,6 +10,10 @@ This project is an effort to construct a semantic analyzer.
 The semantic analyzer provides appropriate checking for errors not included in the grammar, but defined by the
 language.
 
+# Semantic Analysis Caveats
+The semantic analysis treats function identifiers the same as variable identifiers, as such a variable cannot take
+on the name of a function, or vice versa.
+
 # Invoking the application
 Invoke the application by calling:
     ./p3 filename
@@ -19,7 +23,7 @@ Invoke the application by calling:
 # Main
 The entry point to the application is main.py.
 
-# Analyzer Program Flow
+# Lexical Analyzer Program Flow
 The input file is processed line by line, character by character. At the beginning of a new token, the analyzer
 determines the type (or set of types) the new token may belong to.
 
