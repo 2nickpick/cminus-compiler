@@ -122,10 +122,7 @@ class Parser(object):
     def params(self):
         self.start()
 
-        if self.current_token == ["void", "KEYWORD"]:
-            self.match("KEYWORD", "void")
-        else:
-            self.params_list()
+        self.params_list()
 
         self.end()
 
@@ -134,7 +131,8 @@ class Parser(object):
         self.start()
 
         self.param()
-        while self.current_token == [",", "OPERATORS"]:
+        while self.current_token == [",", "OPERATORS"] \
+                and self.accepted is not False:
             self.match("OPERATORS", ",")
             self.param()
 
@@ -166,7 +164,8 @@ class Parser(object):
     # local-declarations -> local-declarations var-declaration | @
     def local_declarations(self):
         self.start()
-        while self.current_token and self.current_token[0] in ["int", "float", "void"]:
+        while self.current_token and self.current_token[0] in ["int", "float", "void"] \
+                and self.accepted is not False:
             self.type_specifier()
             self.match("IDENTIFIER")
             self.var_declaration()
@@ -176,7 +175,7 @@ class Parser(object):
     # statement-list -> statement-list statement | @
     def statement_list(self):
         self.start()
-        while self.current_token and self.current_token[0] != "}":
+        while self.current_token and self.current_token[0] != "}" and self.accepted is not False:
             self.statement()
 
         self.end()
@@ -307,7 +306,8 @@ class Parser(object):
     def relational_expression(self):
 
         self.start()
-        while self.current_token and self.current_token[0] in ['<=', '<', '>', '>=', '==', '!=']:
+        while self.current_token and self.current_token[0] in ['<=', '<', '>', '>=', '==', '!='] \
+                and self.accepted is not False:
             self.relational_operation()
             self.additive_expression()
 
@@ -319,7 +319,8 @@ class Parser(object):
         self.start()
 
         self.term()
-        while self.current_token and self.current_token[0] in ["+", "-"]:
+        while self.current_token and self.current_token[0] in ["+", "-"] \
+                and self.accepted is not False:
             self.add_operation()
             self.term()
 
@@ -371,7 +372,8 @@ class Parser(object):
 
         self.start()
         self.factor()
-        while self.current_token and self.current_token[0] in ["*", "/"]:
+        while self.current_token and self.current_token[0] in ["*", "/"] \
+                and self.accepted is not False:
             self.multiply_operation()
             self.factor()
 
@@ -443,7 +445,8 @@ class Parser(object):
 
         self.start()
         self.expression()
-        while self.current_token == [",", "OPERATORS"]:
+        while self.current_token == [",", "OPERATORS"] \
+                and self.accepted is not False:
             self.match("OPERATORS", ",")
             self.expression()
 
@@ -486,11 +489,9 @@ class Parser(object):
     # an error has occured, reject the input
     def reject(self, token_type, token_value):
         self.accepted = False
-        print("REJECT", end="")
         if self.debug:
             print("Current Token: " + str(self.current_token))
             print("Failed to match [" + str(token_type) + ", " + str(token_value) + "] in " + str(inspect.stack()[2][3]))
-        sys.exit()
 
     # debug output for entering a recursive function
     def start(self):
