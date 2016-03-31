@@ -6,31 +6,16 @@ int main(void)
    int z;
    int abc;
 
-   if(x > y)
+   if(x > )
    {
     int ded;
+    x = 4;
+    y = ded;
    }
     else
    {
     int ded;
    }
-}
 
-/* b */
-int maintwo(void)
-{
-   int x;
-   float y;
-   int z;
-   int abc;
-   void main;
-
-   if(x > y)
-   {
-    int ded;
-   }
-    else
-   {
-    int ded;
-   }
+   return 0;
 }

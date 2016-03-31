@@ -28,6 +28,15 @@ class Parser(object):
         self.parsing_main = False
         self.main_function_exists = False
 
+        self.found_void_type = False
+        self.parsing_void_function = False
+
+        self.found_int_type = False
+        self.parsing_int_function = False
+
+        self.found_float_type = False
+        self.parsing_float_function = False
+
         self.last_token = None
         self.current_token = self.tokens.pop()
 
@@ -79,6 +88,14 @@ class Parser(object):
             self.current_symbol = symbol_table.Symbol()
             self.current_symbol.set_type(self.current_token[0])
             self.current_symbol.set_scope(self.scope)
+
+            if self.current_token[0] == "void":
+                self.found_void_type = True
+            if self.current_token[0] == "int":
+                self.found_int_type = True
+            if self.current_token[0] == "float":
+                self.found_float_type = True
+
             self.type_specifier()
 
             self.current_symbol.set_identifier(self.current_token[0])
@@ -93,7 +110,22 @@ class Parser(object):
             self.current_symbol = None
 
             if self.current_token == ["(", "OPERATORS"]:
+                if self.found_void_type:
+                    self.parsing_void_function = True
+                if self.found_int_type:
+                    self.parsing_int_function = True
+                if self.found_float_type:
+                    self.parsing_float_function = True
+
                 self.function_declaration()
+
+                self.found_void_type = False
+                self.parsing_void_function = False
+                self.found_int_type = False
+                self.parsing_int_function = False
+                self.found_float_type = False
+                self.parsing_float_function = False
+
             elif self.current_token and self.current_token[0] in ['[', ';']:
                 self.var_declaration()
 
@@ -293,7 +325,24 @@ class Parser(object):
 
         self.match("KEYWORD", "return")
         if self.current_token != [';', 'OPERATORS']:
+            if self.parsing_void_function:
+                self.reject_semantic("Void function should not have a return expression.")
+
+            # check that expression returned is an integer
+            #if self.parsing_int_function:
+            #    self.reject_semantic("Int function needs an int return value")
+
+            # check that expression returned is a float
+            #elif self.parsing_float_function:
+            #    self.reject_semantic("Float function needs a float return value")
+
             self.expression()
+        else:
+            if self.parsing_int_function:
+                self.reject_semantic("Int function needs an int return value")
+            elif self.parsing_float_function:
+                self.reject_semantic("Float function needs a float return value")
+
         self.match("OPERATORS", ";")
 
         self.end()
@@ -341,6 +390,9 @@ class Parser(object):
         self.start()
 
         if self.current_token and self.current_token[1] == "IDENTIFIER":
+            if not self.symbol_table.exists(self.current_token[0], self.scope):
+                self.reject_semantic("Undeclared identifier: " + self.current_token[0])
+
             self.match("IDENTIFIER")
             self.var()
             if self.current_token and self.current_token[0] == "=":
