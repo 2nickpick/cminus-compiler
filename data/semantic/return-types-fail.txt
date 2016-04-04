@@ -2,15 +2,13 @@
 
 int car(void)
 {
-   int q;
-   int x;
-   q=x+4;
+   float q;
+   q = 4E2;
    return q;
 }
 
 void main(void)
 {
    car ();
-
    return;
 }

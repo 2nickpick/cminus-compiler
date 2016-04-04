@@ -187,16 +187,24 @@ class Parser(object):
         self.match("NUMBER")
         self.end()
 
+        return "int"
+
     # any-number -> NUM | FLOAT
     def any_number(self):
         self.start()
 
+        any_number_type = None
+
         if self.current_token and self.current_token[1] == "NUMBER":
             self.match("NUMBER")
+            any_number_type = "int"
         else:
             self.match("FLOAT")
+            any_number_type = "float"
 
         self.end()
+
+        return any_number_type
 
     # params -> void | params-list
     def params(self):
@@ -356,21 +364,15 @@ class Parser(object):
         if self.current_token != [';', 'OPERATORS']:
             if self.parsing_void_function:
                 self.reject_semantic("Void function should not have a return value.")
+            else:
+                calling_symbol = self.symbol_table.exists(self.calling_function, self.scope)
 
-            # check that expression returned is an integer
-            #if self.parsing_int_function:
-            #    self.reject_semantic("Int function needs an int return value")
+                expression_type = self.expression(calling_symbol.type)
 
-            # check that expression returned is a float
-            #elif self.parsing_float_function:
-            #    self.reject_semantic("Float function needs a float return value")
-
-            self.expression()
-        #else:
-            #if self.parsing_int_function:
-            #    self.reject_semantic("Int function needs an int return value")
-            #elif self.parsing_float_function:
-            #    self.reject_semantic("Float function needs a float return value")
+                if not calling_symbol:
+                    self.reject_semantic("function is undefined... eh?")
+                elif calling_symbol.type != expression_type:
+                    self.reject_semantic("return value is invalid type")
 
         self.match("OPERATORS", ";")
 
@@ -405,67 +407,84 @@ class Parser(object):
         self.end()
 
     # assignment-statement -> = expression
-    def assignment_statement(self):
+    def assignment_statement(self, assignment_statement_type):
 
         self.start()
 
         self.match("OPERATORS", "=")
-        self.expression()
+        expression_type = self.expression(assignment_statement_type)
+
+        if expression_type != assignment_statement_type:
+            self.reject_semantic("attempted to assign a " + str(expression_type) + " to " + \
+                                 str(assignment_statement_type) + " var")
 
         self.end()
 
+        return assignment_statement_type
+
     # expression -> ID var assignment-expression | simple-expression
-    def expression(self):
+    def expression(self, expression_type=None):
         self.start()
 
         if self.current_token and self.current_token[1] == "IDENTIFIER":
-            if not self.symbol_table.exists(self.current_token[0], self.scope):
-                self.reject_semantic("Undeclared identifier: " + self.current_token[0])
+            active_symbol = self.symbol_table.exists(self.current_token[0], self.scope)
+            if active_symbol:
+                expression_type = active_symbol.type
 
-            self.match("IDENTIFIER")
-            self.var()
-            if self.current_token and self.current_token[0] == "=":
-                self.assignment_statement()
+                self.match("IDENTIFIER")
+                expression_type = self.var(expression_type)
+                if self.current_token and self.current_token[0] == "=":
+                    assignment_type = self.assignment_statement(expression_type)
+                else:
+                    expression_type = self.simple_expression(expression_type)
             else:
-                self.simple_expression()
+                self.reject_semantic("Undeclared identifier: " + self.current_token[0])
         else:
-            self.simple_expression()
+            expression_type = self.simple_expression(expression_type)
 
         self.end()
 
+        return expression_type
+
     # simple-expression -> additive-expression relational-expression
-    def simple_expression(self):
+    def simple_expression(self, simple_expression_type=None):
 
         self.start()
 
-        self.additive_expression()
-        self.relational_expression()
+        simple_expression_type = self.additive_expression(simple_expression_type)
+        self.relational_expression(simple_expression_type)
 
         self.end()
 
+        return simple_expression_type
+
     # relational-expression -> relational-operation additive expression relational-operation | @
-    def relational_expression(self):
+    def relational_expression(self, relational_expression_type):
 
         self.start()
         while self.current_token and self.current_token[0] in ['<=', '<', '>', '>=', '==', '!='] \
                 and self.accepted is not False:
             self.relational_operation()
-            self.additive_expression()
+            relational_expression_type = self.additive_expression(relational_expression_type)
 
         self.end()
 
+        return relational_expression_type
+
     # additive-expression -> term | add-operation term additive-expression
-    def additive_expression(self):
+    def additive_expression(self, additive_expression_type=None):
 
         self.start()
 
-        self.term()
+        additive_expression_type = self.term(additive_expression_type)
         while self.current_token and self.current_token[0] in ["+", "-"] \
                 and self.accepted is not False:
             self.add_operation()
             self.term()
 
         self.end()
+
+        return additive_expression_type
 
     # add-operation -> + | -
     def add_operation(self):
@@ -509,40 +528,45 @@ class Parser(object):
         self.end()
 
     # term -> factor | factor multiply-operation factor term
-    def term(self):
+    def term(self, term_type=None):
 
         self.start()
-        self.factor()
+        term_type = self.factor(term_type)
         while self.current_token and self.current_token[0] in ["*", "/"] \
                 and self.accepted is not False:
             self.multiply_operation()
-            self.factor()
+            self.factor(term_type)
 
         self.end()
 
+        return term_type
+
     # factor -> ( expression ) | call | var | NUM | FLOAT
-    def factor(self):
+    def factor(self, factor_type=None):
         self.start()
+
         if self.current_token == ["(", "OPERATORS"]:
             if self.last_token and self.last_token[1] == "IDENTIFIER":
                 if not self.symbol_table.function_exists(self.last_token[0], self.scope):
                     self.reject_semantic("" + self.last_token[0] + " is not a function")
 
                 self.calling_function = self.last_token[0]
-                self.call()
+                factor_type = self.call()
             else:
                 self.match("OPERATORS", "(")
-                self.expression()
+                factor_type = self.expression(factor_type)
                 self.match("OPERATORS", ")")
         elif self.current_token and self.current_token[1] in ["NUMBER", "FLOAT"]:
-            self.any_number()
+            factor_type = self.any_number()
         else:
-            self.call_or_var()
+            factor_type = self.call_or_var(factor_type)
 
         self.end()
 
+        return factor_type
+
     # call-or-var -> ID | call | var
-    def call_or_var(self):
+    def call_or_var(self, call_or_var_type=None):
         self.start()
 
         self.calling_function = self.last_token[0]
@@ -552,13 +576,19 @@ class Parser(object):
             self.calling_function = self.last_token[0]
 
         if self.current_token == ["(", "OPERATORS"]:
-            self.call()
+            call_or_var_type = self.call()
         else:
-            self.var()
+            active_symbol = self.symbol_table.exists(self.current_token[0], self.scope)
+            if active_symbol:
+                call_or_var_type = self.var(active_symbol.type)
+            else:
+                call_or_var_type = self.var(call_or_var_type)
 
         self.calling_function = None
 
         self.end()
+
+        return call_or_var_type
 
     # call -> ( args )
     def call(self):
@@ -567,6 +597,7 @@ class Parser(object):
         called_function = self.calling_function
 
         function_params = self.symbol_table.load_params(self.calling_function, self.scope)
+        call_type = self.symbol_table.load_type(self.calling_function, self.scope)
 
         self.match("OPERATORS", "(")
         args_parsed = self.args()
@@ -583,14 +614,16 @@ class Parser(object):
 
         self.end()
 
+        return call_type
+
     # var -> [ expression ] | @
-    def var(self):
+    def var(self, var_type):
 
         self.start()
 
         if self.current_token and self.current_token[1] == "IDENTIFIER":
             self.match("IDENTIFIER")
-            self.var()
+            self.var(var_type)
 
         if self.last_token and self.last_token[1] == "IDENTIFIER" and self.current_token[0] != "(":
             if not self.symbol_table.var_exists(self.last_token[0], self.scope):
@@ -598,10 +631,15 @@ class Parser(object):
 
         if self.current_token == ["[", "OPERATORS"]:
             self.match("OPERATORS", "[")
-            self.expression()
+            array_index_type = self.expression(var_type)
+            if array_index_type != "int":
+                self.reject_semantic("array index type was not int, was " + array_index_type + " instead")
             self.match("OPERATORS", "]")
+            var_type += "[]"
 
         self.end()
+
+        return var_type
 
     # args -> args-list | @
     def args(self):

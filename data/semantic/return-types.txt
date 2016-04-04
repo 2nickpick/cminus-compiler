@@ -1,0 +1,12 @@
+/* should parse void function parms t28   */
+
+int car(void)
+{
+   int q;
+   q = 4;
+   return q;
+}
+
+void main(void) {
+    return;
+}

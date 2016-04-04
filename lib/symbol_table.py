@@ -35,7 +35,7 @@ class SymbolTable(object):
     def exists(self, identifier, scope):
         for symbol in reversed(self.symbols):
             if symbol.identifier == identifier and symbol.scope <= scope:
-                return True
+                return symbol
 
         return False
 
@@ -43,6 +43,13 @@ class SymbolTable(object):
         for symbol in reversed(self.symbols):
             if symbol.identifier == function_name and symbol.scope <= scope:
                 return symbol.parameters
+
+        return []
+
+    def load_type(self, function_name, scope):
+        for symbol in reversed(self.symbols):
+            if symbol.identifier == function_name and symbol.scope <= scope:
+                return symbol.type
 
         return []
 
