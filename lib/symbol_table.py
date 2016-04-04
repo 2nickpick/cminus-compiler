@@ -16,16 +16,65 @@ class SymbolTable(object):
     def __init__(self):
         self.symbols = []
 
-    def add_symbol(self, symbol):
-        if not self.exists(symbol.identifier, symbol.scope):
-            self.symbols.append(symbol)
+    def add_symbol(self, symbol_to_add):
+        if not self.exists_in_scope(symbol_to_add.identifier, symbol_to_add.scope):
+
+            if symbol_to_add.parent is not None:
+                for symbol in reversed(self.symbols):
+                    if symbol_to_add.parent:
+                        if symbol.identifier == symbol_to_add.parent[0] and symbol.scope <= symbol_to_add.scope:
+                            symbol.parameters.append(symbol_to_add)
+                            break
+
+            self.symbols.append(symbol_to_add)
+
             return True
         else:
             return False
 
     def exists(self, identifier, scope):
-        for symbol in self.symbols:
+        for symbol in reversed(self.symbols):
             if symbol.identifier == identifier and symbol.scope <= scope:
+                return True
+
+        return False
+
+    def load_params(self, function_name, scope):
+        for symbol in reversed(self.symbols):
+            if symbol.identifier == function_name and symbol.scope <= scope:
+                return symbol.parameters
+
+        return []
+
+    def function_exists(self, identifier, scope):
+        for symbol in reversed(self.symbols):
+            if symbol.identifier == identifier and symbol.scope <= scope:
+                if not symbol.is_function:
+                    # found matching symbol, but it is not a function
+                    return False
+                else:
+                    # found matching symbol in closest scope, and is a function
+                    return True
+
+        # no match found
+        return False
+
+    def var_exists(self, identifier, scope):
+        for symbol in reversed(self.symbols):
+            if symbol.identifier == identifier and symbol.scope <= scope:
+                if symbol.is_function:
+                    # found matching symbol, but it is not a function
+                    return False
+                else:
+                    # found matching symbol in closest scope, and is a function
+                    return True
+
+        # no match found
+        return False
+
+    def exists_in_scope(self, identifier, scope):
+        for symbol in self.symbols:
+            if symbol.identifier == identifier and symbol.scope == scope:
                 return True
 
         return False
@@ -52,12 +101,18 @@ class Symbol(object):
         self.type = None
         self.value = None
         self.scope = None
+        self.is_function = False
+        self.parent = None
+        self.parameters = []
 
-    def create(self, identifier, type, value, scope):
+    def create(self, identifier, type, value, scope, is_function):
         self.identifier = identifier
         self.type = type
         self.value = value
         self.scope = scope
+        self.is_function = is_function
+        self.parent = None
+        self.parameters = []
 
     def set_identifier(self, identifier):
         self.identifier = identifier
@@ -71,6 +126,13 @@ class Symbol(object):
     def set_scope(self, scope):
         self.scope = scope
 
+    def set_is_function(self, is_function):
+        self.is_function = is_function
+
+    def set_parent(self, identifier, scope):
+        self.parent = [identifier, scope]
+
     def __str__(self):
-        return str(self.identifier) + "\t" + str(self.type) + "\t" + str(self.value) + "\t" + str(self.scope)
+        return str(self.identifier) + "\t" + str(self.type) + "\t" + str(self.value) + "\t" + str(self.scope) \
+                + str(self.parent)
 

@@ -1,0 +1,25 @@
+float foo[45];
+
+int key(int parm) {
+    return 8;
+}
+
+int x(float num) {
+    return 8.5E2;
+}
+
+int bar(float num) {
+    return 8.5E2;
+}
+
+int main(void) {
+    int fortyfive;
+    int twentythree;
+
+    fortyfive = 45;
+    twentythree = 23;
+
+    if(key(4 + 8 + 90 + (x(fortyfive) + (foo[5 + 5 + bar(twentythree)])))) {
+        return 1;
+    }
+}

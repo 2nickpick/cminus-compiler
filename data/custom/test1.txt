@@ -1,0 +1,42 @@
+int x;
+void y;
+float z;
+
+int a[12];
+
+void call(void) {
+    return;
+}
+
+int bar(int testy) {
+    return 8;
+}
+
+void print(int numtoprint) {
+    return;
+}
+
+float foo(int t, float bart, int tests) {
+
+    int fifty;
+
+    fifty = 50;
+
+    call();
+
+    if(x > y) {
+        print(5);
+    }
+
+
+    if(y > (x + 4) * foo(20 - bar(fifty), 4, 5))
+        print(10);
+
+
+    return 800E+9 + foo(3, 3.5, 5);
+
+}
+
+void main(void) {
+    return;
+}

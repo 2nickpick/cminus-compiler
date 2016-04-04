@@ -29,6 +29,7 @@ else:
 
 #   Read in file for processing...
 files = glob.glob("data/" + str(sys.argv[1]) + "/*.txt")
+no_errors = True
 for filename in files:
 
     file = open(filename, "r")
@@ -44,8 +45,20 @@ for filename in files:
     parser = Parser(tokens)
     parse_result = parser.parse()
 
-    print(filename + ": " + parse_result + "\n", end="")
+    should_fail = "-fail" in filename
+    error = False
 
-    # print("---------------------------------------\n")
-    #
-    # print("End Parsing")
+    if should_fail and parse_result == "ACCEPT":
+        error = True
+    elif not should_fail and parse_result == "REJECT":
+        error = True
+
+    if error:
+        if no_errors:
+            print("Invalid Tests:")
+
+        no_errors = False
+        print(filename + ": " + parse_result + "\n", end="")
+
+if no_errors:
+    print("All Tests Passed!")

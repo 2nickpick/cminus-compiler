@@ -6,7 +6,7 @@ int car(int q, float p)
    return q;
 }
 
-void main(void)
+void main(void myvoidparam)
 {
    int i;
    float j;

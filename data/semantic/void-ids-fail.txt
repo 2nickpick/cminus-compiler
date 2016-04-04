@@ -11,6 +11,8 @@ void main(void)
    int i;
    float j;
    int x;
+   void myvoidvar;
+
    car (i, j);
 
    return;

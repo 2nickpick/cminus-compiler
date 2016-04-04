@@ -1,0 +1,28 @@
+;
+int bar[56];
+void baz;
+
+void output(int num, int numb, int barparm, int barparmtwo) {
+    return ;
+
+}
+
+int foobar(int one, int two[], int three) {
+   int foo;
+   int bar[56];
+   int baz[3];
+
+   if (foo == 1)
+   {
+       if (bar == 3)
+           output(3, 1, 2, 3);
+   }
+   else
+       output(2, foo, foo[bar], foo[bar/2]);
+
+   return baz[45];
+}
+
+void quux(void) {}
+
+void main(void) {}

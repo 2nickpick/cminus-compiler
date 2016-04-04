@@ -1,6 +1,6 @@
 /* should parse void function parms t28   */
 
-int car(int q, float p)
+int car(float q, int p)
 {
    q=q+4;
    return q;
@@ -10,7 +10,6 @@ void main(void)
 {
    int i;
    float j;
-   int x;
    car (i, j);
 
    return;

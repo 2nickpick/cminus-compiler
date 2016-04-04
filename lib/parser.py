@@ -40,6 +40,10 @@ class Parser(object):
         self.last_token = None
         self.current_token = self.tokens.pop()
 
+        self.calling_function = None  # name of function currently parsing args for
+        self.function_params = []  # list of params for a function
+        self.args_parsed = 0  # number of passed args, for catching mismatched params
+
     # Process input tokens for parsing
     # Start the recursive descent parsing
     def parse(self):
@@ -54,7 +58,6 @@ class Parser(object):
             self.reject_semantic("Main function undefined")
 
         if self.debug_semantics:
-            print("ID\tType\tValue\tScope")
             for symbol in self.symbol_table.symbols:
                 print(str(symbol))
 
@@ -104,8 +107,11 @@ class Parser(object):
 
             self.match("IDENTIFIER")
 
+            if self.current_token == ["(", "OPERATORS"]:
+                self.current_symbol.set_is_function(True)
+
             if not self.symbol_table.add_symbol(self.current_symbol):
-                self.reject_semantic("Symbol could not be added, " + self.current_symbol.identifier)
+                self.reject_semantic("Symbol already exists in scope: " + self.current_symbol.identifier)
 
             self.current_symbol = None
 
@@ -138,7 +144,7 @@ class Parser(object):
         self.start()
         if self.current_token == ['[', 'OPERATORS']:
             self.match("OPERATORS", "[")
-            self.any_number()
+            self.integer()
             self.match("OPERATORS", "]")
 
         self.match("OPERATORS", ";")
@@ -148,6 +154,9 @@ class Parser(object):
     # function-declaration -> type-specifier ( params ) compound-statement
     def function_declaration(self):
         self.start()
+
+        self.calling_function = self.last_token[0]
+
         self.match("OPERATORS", "(")
         self.params()
         self.match("OPERATORS", ")")
@@ -155,6 +164,8 @@ class Parser(object):
 
         if self.parsing_main is True and self.accepted is not False:
             self.main_function_exists = True
+
+        self.calling_function = None
 
         self.end()
 
@@ -212,21 +223,33 @@ class Parser(object):
 
         self.start()
 
-        if self.current_token == ["void", "KEYWORD"]:
-            self.type_specifier()
-            if self.current_token and self.current_token[1] == "IDENTIFIER":
-                self.match("IDENTIFIER")
+        self.current_symbol = symbol_table.Symbol()
+        self.current_symbol.set_type(self.current_token[0])
+        self.current_symbol.set_scope(self.scope+1)
+        self.current_symbol.set_parent(self.calling_function, self.scope)
 
-                if self.current_token == ['[', "OPERATORS"]:
-                    self.match('OPERATORS', '[')
-                    self.match('OPERATORS', ']')
-        else:
-            self.type_specifier()
+        is_void = self.current_token == ["void", "KEYWORD"]
+
+        self.type_specifier()
+
+        is_void_with_identifier = is_void and \
+            self.current_token and self.current_token[1] == "IDENTIFIER"
+
+        if not is_void or is_void_with_identifier:
+            self.current_symbol.set_identifier(self.current_token[0])
+
+            if is_void_with_identifier and self.current_token[1] is "IDENTIFIER":
+                self.reject_semantic("Void parameter cannot be named: " + str(self.calling_function) + ", " + self.current_token[0])
             self.match("IDENTIFIER")
 
-            if self.current_token == ['[', "OPERATORS"]:
-                self.match('OPERATORS', '[')
-                self.match('OPERATORS', ']')
+            if not self.symbol_table.add_symbol(self.current_symbol):
+                self.reject_semantic("Symbol already exists in scope: " + self.current_symbol.identifier)
+
+        self.current_symbol = None
+
+        if self.current_token == ['[', "OPERATORS"]:
+            self.match('OPERATORS', '[')
+            self.match('OPERATORS', ']')
 
         self.end()
 
@@ -251,14 +274,20 @@ class Parser(object):
             self.current_symbol = symbol_table.Symbol()
             self.current_symbol.set_type(self.current_token[0])
             self.current_symbol.set_scope(self.scope)
+
+            is_void = self.current_token and self.current_token == ["void", "KEYWORD"]
+
             self.type_specifier()
+
+            if is_void and self.current_token and self.current_token[1] is "IDENTIFIER":
+                self.reject_semantic("variables with type void are not permitted: " + str(self.current_token[0]))
 
             self.current_symbol.set_identifier(self.current_token[0])
             self.match("IDENTIFIER")
             self.var_declaration()
 
             if not self.symbol_table.add_symbol(self.current_symbol):
-                self.reject_semantic("Symbol could not be added, " + self.current_symbol.identifier)
+                self.reject_semantic("Symbol already exists in scope: " + self.current_symbol.identifier)
 
             self.current_symbol = None
 
@@ -326,7 +355,7 @@ class Parser(object):
         self.match("KEYWORD", "return")
         if self.current_token != [';', 'OPERATORS']:
             if self.parsing_void_function:
-                self.reject_semantic("Void function should not have a return expression.")
+                self.reject_semantic("Void function should not have a return value.")
 
             # check that expression returned is an integer
             #if self.parsing_int_function:
@@ -337,11 +366,11 @@ class Parser(object):
             #    self.reject_semantic("Float function needs a float return value")
 
             self.expression()
-        else:
-            if self.parsing_int_function:
-                self.reject_semantic("Int function needs an int return value")
-            elif self.parsing_float_function:
-                self.reject_semantic("Float function needs a float return value")
+        #else:
+            #if self.parsing_int_function:
+            #    self.reject_semantic("Int function needs an int return value")
+            #elif self.parsing_float_function:
+            #    self.reject_semantic("Float function needs a float return value")
 
         self.match("OPERATORS", ";")
 
@@ -496,6 +525,10 @@ class Parser(object):
         self.start()
         if self.current_token == ["(", "OPERATORS"]:
             if self.last_token and self.last_token[1] == "IDENTIFIER":
+                if not self.symbol_table.function_exists(self.last_token[0], self.scope):
+                    self.reject_semantic("" + self.last_token[0] + " is not a function")
+
+                self.calling_function = self.last_token[0]
                 self.call()
             else:
                 self.match("OPERATORS", "(")
@@ -511,12 +544,19 @@ class Parser(object):
     # call-or-var -> ID | call | var
     def call_or_var(self):
         self.start()
+
+        self.calling_function = self.last_token[0]
+
         if self.current_token and self.current_token[1] == "IDENTIFIER":
             self.match("IDENTIFIER")
+            self.calling_function = self.last_token[0]
+
         if self.current_token == ["(", "OPERATORS"]:
             self.call()
         else:
             self.var()
+
+        self.calling_function = None
 
         self.end()
 
@@ -524,9 +564,17 @@ class Parser(object):
     def call(self):
         self.start()
 
+        called_function = self.calling_function
+
+        function_params = self.symbol_table.load_params(self.calling_function, self.scope)
+
         self.match("OPERATORS", "(")
-        self.args()
+        args_parsed = self.args()
         self.match("OPERATORS", ")")
+
+        if len(args_parsed) != len(function_params):
+            self.reject_semantic("Mismatched number of arguments for '" + str(called_function) + "'. Found " +
+                                 str(len(args_parsed)) + ", Expected " + str(len(function_params)))
 
         self.end()
 
@@ -534,6 +582,14 @@ class Parser(object):
     def var(self):
 
         self.start()
+
+        if self.current_token and self.current_token[1] == "IDENTIFIER":
+            self.match("IDENTIFIER")
+            self.var()
+
+        if self.last_token and self.last_token[1] == "IDENTIFIER" and self.current_token[0] != "(":
+            if not self.symbol_table.var_exists(self.last_token[0], self.scope):
+                self.reject_semantic("" + self.last_token[0] + " is a function, not a variable")
 
         if self.current_token == ["[", "OPERATORS"]:
             self.match("OPERATORS", "[")
@@ -547,22 +603,30 @@ class Parser(object):
 
         self.start()
 
+        return_args = []
+
         if self.current_token != [")", "OPERATORS"]:
-            self.arg_list()
+            return_args = self.arg_list()
 
         self.end()
+
+        return return_args
 
     # arg-list -> expression | expression , arg-list
     def arg_list(self):
 
         self.start()
-        self.expression()
+
+        return_args = [self.expression()]
+
         while self.current_token == [",", "OPERATORS"] \
                 and self.accepted is not False:
             self.match("OPERATORS", ",")
-            self.expression()
+            return_args.append(self.expression())
 
         self.end()
+
+        return return_args
 
     # accept a token out from the input stream
     def match(self, token_type, token_value=None):
@@ -607,9 +671,9 @@ class Parser(object):
 
     # a semantic error has occurred, reject the input
     def reject_semantic(self, reason):
-        self.accepted = False
-        if self.debug_semantics:
+        if self.accepted is True and self.debug_semantics:
             print("Semantic Rejection: " + reason)
+        self.accepted = False
 
     # debug output for entering a recursive function
     def start(self):

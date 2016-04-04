@@ -1,0 +1,12 @@
+/* test param numbers */
+
+int test(int one, float two)
+{
+    return 4;
+}
+
+
+void main(void)
+{
+    test(1, 2); /* should pass, right num of args */
+}

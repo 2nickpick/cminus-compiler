@@ -1,0 +1,26 @@
+int foo(int parm) {
+    return 8;
+}
+
+void test(int parmtwo) {
+    return;
+}
+
+int main(void) {
+
+    int x;
+    int totes;
+    int tets;
+    int twentyfive;
+    int bar;
+    float y;
+
+    totes = x = 23; /* foo(bar); */
+    totes = x = foo(bar);
+
+    if( tets > y + foo(bar[twentyfive]) + (87 * 4)) {
+        test(x);
+    } else
+        test(y);
+
+}
