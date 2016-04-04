@@ -576,6 +576,11 @@ class Parser(object):
             self.reject_semantic("Mismatched number of arguments for '" + str(called_function) + "'. Found " +
                                  str(len(args_parsed)) + ", Expected " + str(len(function_params)))
 
+        # check if args parsed is same type as param
+#       else:
+#           for i in range(0, len(args_parsed)):
+#               print()
+
         self.end()
 
     # var -> [ expression ] | @
