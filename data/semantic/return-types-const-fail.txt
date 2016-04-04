@@ -3,7 +3,7 @@
 int car(float q, int p)
 {
    q=q+4;
-   return q;
+   return 8.5;
 }
 
 void main(void)

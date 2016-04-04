@@ -89,7 +89,8 @@ class Parser(object):
             self.empty_declaration()
         else:
             self.current_symbol = symbol_table.Symbol()
-            self.current_symbol.set_type(self.current_token[0])
+            type = self.current_token[0]
+            self.current_symbol.set_type(type)
             self.current_symbol.set_scope(self.scope)
 
             if self.current_token[0] == "void":
@@ -133,7 +134,7 @@ class Parser(object):
                 self.parsing_float_function = False
 
             elif self.current_token and self.current_token[0] in ['[', ';']:
-                self.var_declaration()
+                is_array = self.var_declaration()
 
             self.parsing_main = False
 
@@ -142,7 +143,10 @@ class Parser(object):
     # var-declaration -> type-specifier ID ; | type-specifier ID [ NUM ] ; | type-specifier ID [ FLOAT ] ;
     def var_declaration(self):
         self.start()
+
+        is_array = False
         if self.current_token == ['[', 'OPERATORS']:
+            is_array = True
             self.match("OPERATORS", "[")
             self.integer()
             self.match("OPERATORS", "]")
@@ -151,21 +155,21 @@ class Parser(object):
 
         self.end()
 
+        return is_array
+
     # function-declaration -> type-specifier ( params ) compound-statement
     def function_declaration(self):
         self.start()
 
-        self.calling_function = self.last_token[0]
+        calling_function = self.last_token[0]
 
         self.match("OPERATORS", "(")
-        self.params()
+        self.params(calling_function)
         self.match("OPERATORS", ")")
-        self.compound_statement()
+        self.compound_statement(calling_function)
 
         if self.parsing_main is True and self.accepted is not False:
             self.main_function_exists = True
-
-        self.calling_function = None
 
         self.end()
 
@@ -207,34 +211,34 @@ class Parser(object):
         return any_number_type
 
     # params -> void | params-list
-    def params(self):
+    def params(self, calling_function):
         self.start()
 
-        self.params_list()
+        self.params_list(calling_function)
 
         self.end()
 
     # params-list -> params-list , param | param
-    def params_list(self):
+    def params_list(self, calling_function):
         self.start()
 
-        self.param()
+        self.param(calling_function)
         while self.current_token == [",", "OPERATORS"] \
                 and self.accepted is not False:
             self.match("OPERATORS", ",")
-            self.param()
+            self.param(calling_function)
 
         self.end()
 
     # param -> type-specifier ID | type-specifier ID [ NUM ]
-    def param(self):
+    def param(self, calling_function):
 
         self.start()
 
         self.current_symbol = symbol_table.Symbol()
         self.current_symbol.set_type(self.current_token[0])
         self.current_symbol.set_scope(self.scope+1)
-        self.current_symbol.set_parent(self.calling_function, self.scope)
+        self.current_symbol.set_parent(calling_function, self.scope)
 
         is_void = self.current_token == ["void", "KEYWORD"]
 
@@ -262,12 +266,12 @@ class Parser(object):
         self.end()
 
     # compound-statement -> { local-declarations statement-list }
-    def compound_statement(self):
+    def compound_statement(self, calling_function):
         self.start()
         self.match("OPERATORS", "{")
         self.scope += 1
         self.local_declarations()
-        self.statement_list()
+        self.statement_list(calling_function)
         self.match("OPERATORS", "}")
         self.symbol_table.destroy_scope(self.scope)
         self.scope -= 1
@@ -280,7 +284,8 @@ class Parser(object):
                 and self.accepted is not False:
 
             self.current_symbol = symbol_table.Symbol()
-            self.current_symbol.set_type(self.current_token[0])
+            type = self.current_token[0]
+            self.current_symbol.set_type(type)
             self.current_symbol.set_scope(self.scope)
 
             is_void = self.current_token and self.current_token == ["void", "KEYWORD"]
@@ -292,7 +297,10 @@ class Parser(object):
 
             self.current_symbol.set_identifier(self.current_token[0])
             self.match("IDENTIFIER")
-            self.var_declaration()
+            is_array = self.var_declaration()
+
+            if is_array:
+                self.current_symbol.set_type(type+"[]")
 
             if not self.symbol_table.add_symbol(self.current_symbol):
                 self.reject_semantic("Symbol already exists in scope: " + self.current_symbol.identifier)
@@ -302,25 +310,25 @@ class Parser(object):
         self.end()
 
     # statement-list -> statement-list statement | @
-    def statement_list(self):
+    def statement_list(self, calling_function):
         self.start()
         while self.current_token and self.current_token[0] != "}" and self.accepted is not False:
-            self.statement()
+            self.statement(calling_function)
 
         self.end()
 
     # statement -> expression-statement | selection-statement | compound-statement
     #   | iteration-statement | return-statement | empty-statement
-    def statement(self):
+    def statement(self, calling_function):
         self.start()
         if self.current_token[0] == "if":
-            self.selection_statement()
+            self.selection_statement(calling_function)
         elif self.current_token[0] == "while":
-            self.iteration_statement()
+            self.iteration_statement(calling_function)
         elif self.current_token[0] == "return":
-            self.return_statement()
+            self.return_statement(calling_function)
         elif self.current_token[0] == "{":
-            self.compound_statement()
+            self.compound_statement(calling_function)
         elif self.current_token[0] == ";":
             self.empty_statement()
         else:
@@ -329,21 +337,21 @@ class Parser(object):
         self.end()
 
     # selection-statement -> if ( expression ) statement | if ( expression ) statement else statement
-    def selection_statement(self):
+    def selection_statement(self, calling_function):
         self.start()
         self.match("KEYWORD", "if")
         self.match("OPERATORS", "(")
         self.expression()
         self.match("OPERATORS", ")")
-        self.statement()
+        self.statement(calling_function)
         if self.current_token and self.current_token[0] == "else":
             self.match("KEYWORD", "else")
-            self.statement()
+            self.statement(calling_function)
 
         self.end()
 
     # iteration-statement -> while ( expression ) statement
-    def iteration_statement(self):
+    def iteration_statement(self, calling_function):
 
         self.start()
 
@@ -351,12 +359,12 @@ class Parser(object):
         self.match("OPERATORS", "(")
         self.expression()
         self.match("OPERATORS", ")")
-        self.statement()
+        self.statement(calling_function)
 
         self.end()
 
     # return-statement -> return expression ; | return ;
-    def return_statement(self):
+    def return_statement(self, calling_function):
 
         self.start()
 
@@ -365,7 +373,7 @@ class Parser(object):
             if self.parsing_void_function:
                 self.reject_semantic("Void function should not have a return value.")
             else:
-                calling_symbol = self.symbol_table.exists(self.calling_function, self.scope)
+                calling_symbol = self.symbol_table.exists(calling_function, self.scope)
 
                 expression_type = self.expression(calling_symbol.type)
 
@@ -608,9 +616,11 @@ class Parser(object):
                                  str(len(args_parsed)) + ", Expected " + str(len(function_params)))
 
         # check if args parsed is same type as param
-#       else:
-#           for i in range(0, len(args_parsed)):
-#               print()
+        else:
+            for i in range(0, len(args_parsed)):
+                if args_parsed[i] != function_params[i].type:
+                    self.reject_semantic("Mismatched type of argument index " + str(i) + " for '" + str(called_function) + "'. Found " +
+                                 str(args_parsed[i]) + ", Expected " + str(function_params[i].type))
 
         self.end()
 
@@ -623,7 +633,7 @@ class Parser(object):
 
         if self.current_token and self.current_token[1] == "IDENTIFIER":
             self.match("IDENTIFIER")
-            self.var(var_type)
+            var_type = self.var(var_type)
 
         if self.last_token and self.last_token[1] == "IDENTIFIER" and self.current_token[0] != "(":
             if not self.symbol_table.var_exists(self.last_token[0], self.scope):
@@ -635,7 +645,9 @@ class Parser(object):
             if array_index_type != "int":
                 self.reject_semantic("array index type was not int, was " + array_index_type + " instead")
             self.match("OPERATORS", "]")
-            var_type += "[]"
+            if var_type.endswith("[]"):
+                # remove [], value was de-referenced
+                var_type = var_type[:-2]
 
         self.end()
 
