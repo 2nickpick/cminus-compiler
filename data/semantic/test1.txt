@@ -1,5 +1,5 @@
 int x;
-void y;
+int y;
 float z;
 
 int a[12];
@@ -16,7 +16,7 @@ void print(int numtoprint) {
     return;
 }
 
-float foo(int t, float bart, int tests) {
+int foo(int t, float bart, int tests) {
 
     int fifty;
 
@@ -29,11 +29,11 @@ float foo(int t, float bart, int tests) {
     }
 
 
-    if(y > (x + 4) * foo(20 - bar(fifty), 4, 5))
+    if(y > (x + 4) * foo(20 - bar(fifty), 4.2, 5))
         print(10);
 
 
-    return 800E+9 + foo(3, 3.5, 5);
+    return 800 + foo(3, 3.5, 5);
 
 }
 

@@ -1,6 +1,5 @@
 ;
 int bar[56];
-void baz;
 
 void output(int num, int numb, int barparm, int barparmtwo) {
     return ;
@@ -14,13 +13,13 @@ int foobar(int one, int two[], int three) {
 
    if (foo == 1)
    {
-       if (bar == 3)
+       if (bar[2] == 3)
            output(3, 1, 2, 3);
    }
    else
-       output(2, foo, foo[bar], foo[bar/2]);
+       output(2, foo, baz[3], baz[2]);
 
-   return baz[45];
+   return baz[foobar(1, bar, 3)];
 }
 
 void quux(void) {}

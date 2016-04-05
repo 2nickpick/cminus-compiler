@@ -88,10 +88,10 @@ class Parser(object):
         if self.current_token == [";", "OPERATORS"]:
             self.empty_declaration()
         else:
-            self.current_symbol = symbol_table.Symbol()
+            current_symbol = symbol_table.Symbol()
             type = self.current_token[0]
-            self.current_symbol.set_type(type)
-            self.current_symbol.set_scope(self.scope)
+            current_symbol.set_scope(self.scope)
+            is_array = False
 
             if self.current_token[0] == "void":
                 self.found_void_type = True
@@ -102,19 +102,25 @@ class Parser(object):
 
             self.type_specifier()
 
-            self.current_symbol.set_identifier(self.current_token[0])
+            current_symbol.set_identifier(self.current_token[0])
             if self.current_token[0] == "main":
                 self.parsing_main = True
 
             self.match("IDENTIFIER")
 
+
+            if self.current_token == ["[", "OPERATORS"]:
+                type += "[]"
+
+            current_symbol.set_type(type)
+
             if self.current_token == ["(", "OPERATORS"]:
-                self.current_symbol.set_is_function(True)
+                current_symbol.set_is_function(True)
+            elif self.found_void_type:
+                self.reject_semantic("invalid type for variable, void")
 
-            if not self.symbol_table.add_symbol(self.current_symbol):
-                self.reject_semantic("Symbol already exists in scope: " + self.current_symbol.identifier)
-
-            self.current_symbol = None
+            if not self.symbol_table.add_symbol(current_symbol):
+                self.reject_semantic("Symbol already exists in scope: " + current_symbol.identifier)
 
             if self.current_token == ["(", "OPERATORS"]:
                 if self.found_void_type:
@@ -135,6 +141,9 @@ class Parser(object):
 
             elif self.current_token and self.current_token[0] in ['[', ';']:
                 is_array = self.var_declaration()
+
+            if is_array:
+                type += "[]"
 
             self.parsing_main = False
 
@@ -236,32 +245,35 @@ class Parser(object):
         self.start()
 
         self.current_symbol = symbol_table.Symbol()
-        self.current_symbol.set_type(self.current_token[0])
         self.current_symbol.set_scope(self.scope+1)
         self.current_symbol.set_parent(calling_function, self.scope)
 
         is_void = self.current_token == ["void", "KEYWORD"]
-
+        type = self.current_token[0]
         self.type_specifier()
 
         is_void_with_identifier = is_void and \
             self.current_token and self.current_token[1] == "IDENTIFIER"
 
         if not is_void or is_void_with_identifier:
-            self.current_symbol.set_identifier(self.current_token[0])
+            identifier = self.current_token[0]
+            self.current_symbol.set_identifier(identifier)
 
             if is_void_with_identifier and self.current_token[1] is "IDENTIFIER":
                 self.reject_semantic("Void parameter cannot be named: " + str(self.calling_function) + ", " + self.current_token[0])
             self.match("IDENTIFIER")
 
+            if self.current_token == ['[', "OPERATORS"]:
+                type += "[]"
+                self.match('OPERATORS', '[')
+                self.match('OPERATORS', ']')
+
+            self.current_symbol.set_type(type)
+
             if not self.symbol_table.add_symbol(self.current_symbol):
-                self.reject_semantic("Symbol already exists in scope: " + self.current_symbol.identifier)
+                self.reject_semantic("Symbol already exists in scope: " + identifier)
 
         self.current_symbol = None
-
-        if self.current_token == ['[', "OPERATORS"]:
-            self.match('OPERATORS', '[')
-            self.match('OPERATORS', ']')
 
         self.end()
 
@@ -375,7 +387,16 @@ class Parser(object):
             else:
                 calling_symbol = self.symbol_table.exists(calling_function, self.scope)
 
-                expression_type = self.expression(calling_symbol.type)
+                calling_symbol_type = ""
+                if not calling_symbol:
+                    self.reject_semantic("unknown calling function detected: '" + calling_symbol + "'")
+                else:
+                    calling_symbol_type = calling_symbol.type
+
+                if self.current_token and self.current_token[0] == "[" and calling_symbol_type.endwith("[]"):
+                    calling_symbol_type = calling_symbol_type[:-2]
+
+                expression_type = self.expression(calling_symbol_type)
 
                 if not calling_symbol:
                     self.reject_semantic("function is undefined... eh?")
@@ -436,13 +457,25 @@ class Parser(object):
 
         if self.current_token and self.current_token[1] == "IDENTIFIER":
             active_symbol = self.symbol_table.exists(self.current_token[0], self.scope)
-            if active_symbol:
-                if not expression_type:
-                    expression_type = active_symbol.type
-                elif expression_type != active_symbol.type:
-                    self.reject_semantic("operand type mismatch in expression *")
 
+            active_symbol_type = ""
+            if not active_symbol:
+                self.reject_semantic("Unknown symbol encountered: '" + self.current_token[0] + "'")
+            else:
+                active_symbol_type = active_symbol.type
+
+            if active_symbol:
                 self.match("IDENTIFIER")
+
+                if self.current_token == ["[", "OPERATORS"] and active_symbol_type.endswith("[]"):
+                    active_symbol_type = active_symbol_type[:-2]
+
+                if not expression_type:
+                    expression_type = active_symbol_type
+                    if self.current_token == ["[", "OPERATORS"] and expression_type.endswith("[]"):
+                        expression_type = expression_type[:-2]
+                elif expression_type != active_symbol_type:
+                    self.reject_semantic("operand type mismatch in expression *")
 
                 var_type = self.var(expression_type)
                 if expression_type != var_type:
@@ -566,9 +599,14 @@ class Parser(object):
     def term(self, term_type=None):
 
         self.start()
+
         factor_type = self.factor(term_type)
         if not term_type:
             term_type = factor_type
+            if self.current_token == ["[", "OPERATORS"] and term_type.endswith("[]"):
+                term_type = term_type[:-2]
+        elif term_type != factor_type:
+            self.reject_semantic("operand type mismatch in term *")
 
         while self.current_token and self.current_token[0] in ["*", "/"] \
                 and self.accepted is not False:
@@ -576,7 +614,7 @@ class Parser(object):
 
             factor_type = self.factor(term_type)
             if factor_type != term_type:
-                self.reject_semantic("operand type mismatch in term *")
+                self.reject_semantic("operand type mismatch in term **")
 
         self.end()
 
@@ -614,11 +652,16 @@ class Parser(object):
 
         if self.current_token and self.current_token[1] == "IDENTIFIER":
             var_type = self.symbol_table.load_type(self.current_token[0], self.scope)
+            self.match("IDENTIFIER")
+
+            if self.current_token and self.current_token[0] == "[":
+                var_type = var_type[:-2]
+
             if not call_or_var_type:
                 call_or_var_type = var_type
             elif call_or_var_type != var_type:
                 self.reject_semantic("operand type mismatch in call_or_var *")
-            self.match("IDENTIFIER")
+
             self.calling_function = self.last_token[0]
 
         if self.current_token == ["(", "OPERATORS"]:
@@ -692,13 +735,15 @@ class Parser(object):
 
         if self.current_token == ["[", "OPERATORS"]:
             self.match("OPERATORS", "[")
-            array_index_type = self.expression(var_type)
-            if array_index_type != "int":
-                self.reject_semantic("array index type was not int, was " + array_index_type + " instead")
-            self.match("OPERATORS", "]")
+
             if var_type.endswith("[]"):
                 # remove [], value was de-referenced
                 var_type = var_type[:-2]
+
+            array_index_type = self.expression("int") # hard code to an int - array index should be an int
+            if array_index_type != "int":
+                self.reject_semantic("array index type was not int, was " + array_index_type + " instead")
+            self.match("OPERATORS", "]")
 
         self.end()
 

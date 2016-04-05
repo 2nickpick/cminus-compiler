@@ -13,7 +13,7 @@ int car(int q, int p)
 void main(void)
 {
    int i;
-   float j;
+   int j;
    car (i, j);
 
    return;

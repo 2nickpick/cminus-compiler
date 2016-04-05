@@ -4,11 +4,11 @@ int key(int parm) {
     return 8;
 }
 
-int x(float num) {
+float x(float num) {
     return 8.5E2;
 }
 
-int bar(float num) {
+float bar(float num) {
     return 8.5E2;
 }
 
@@ -19,7 +19,7 @@ int main(void) {
     fortyfive = 45;
     twentythree = 23;
 
-    if(key(4 + 8 + 90 + (x(fortyfive) + (foo[5 + 5 + bar(twentythree)])))) {
+    if(key(4 + 8 + 90)) {
         return 1;
     }
 }

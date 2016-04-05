@@ -1,0 +1,22 @@
+float x[2];
+int y[2];
+
+void start(void) {
+    return;
+}
+
+float floatres(int vari) {
+    return 9.5E+9;
+}
+
+int testone(void) {
+    return 9;
+}
+
+float main(float x[], int y[]) {
+
+    x[1] = 8.5 + floatres(8);
+    y[1] = 4 + 12;
+
+    return 4.5 + x[1] * 8.5 / (x[1] - floatres(y[1]));
+}
