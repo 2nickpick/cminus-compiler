@@ -1,0 +1,4 @@
+void main(void) {
+    float x;
+    x = 3.0 + 4;
+}

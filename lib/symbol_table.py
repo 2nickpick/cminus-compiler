@@ -46,9 +46,9 @@ class SymbolTable(object):
 
         return []
 
-    def load_type(self, function_name, scope):
+    def load_type(self, symbol_name, scope):
         for symbol in reversed(self.symbols):
-            if symbol.identifier == function_name and symbol.scope <= scope:
+            if symbol.identifier == symbol_name and symbol.scope <= scope:
                 return symbol.type
 
         return []

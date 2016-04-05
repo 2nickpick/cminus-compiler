@@ -19,7 +19,7 @@ class Parser(object):
         self.indentation = 0
         self.tokens = tokens
         self.debug = False
-        self.debug_semantics = True
+        self.debug_semantics = False
         self.accepted = True
         self.symbol_table = symbol_table.SymbolTable()
         self.current_symbol = None
@@ -437,18 +437,37 @@ class Parser(object):
         if self.current_token and self.current_token[1] == "IDENTIFIER":
             active_symbol = self.symbol_table.exists(self.current_token[0], self.scope)
             if active_symbol:
-                expression_type = active_symbol.type
+                if not expression_type:
+                    expression_type = active_symbol.type
+                elif expression_type != active_symbol.type:
+                    self.reject_semantic("operand type mismatch in expression *")
 
                 self.match("IDENTIFIER")
-                expression_type = self.var(expression_type)
+
+                var_type = self.var(expression_type)
+                if expression_type != var_type:
+                    self.reject_semantic("operand type mismatch in expression **")
+
                 if self.current_token and self.current_token[0] == "=":
                     assignment_type = self.assignment_statement(expression_type)
+
+                    if expression_type != assignment_type:
+                        self.reject_semantic("operand type mismatch in expression ***")
+
                 else:
-                    expression_type = self.simple_expression(expression_type)
+                    simple_expression_type = self.simple_expression(expression_type)
+
+                    if expression_type != simple_expression_type:
+                        self.reject_semantic("operand type mismatch in expression ***")
             else:
                 self.reject_semantic("Undeclared identifier: " + self.current_token[0])
         else:
-            expression_type = self.simple_expression(expression_type)
+            simple_expression_type = self.simple_expression(expression_type)
+
+            if not expression_type:
+                expression_type = simple_expression_type
+            elif expression_type != simple_expression_type:
+                self.reject_semantic("operand type mismatch in expression ***")
 
         self.end()
 
@@ -484,11 +503,19 @@ class Parser(object):
 
         self.start()
 
-        additive_expression_type = self.term(additive_expression_type)
+        term_type = self.term(additive_expression_type)
+        if not additive_expression_type:
+            additive_expression_type = term_type
+        elif additive_expression_type != term_type:
+            self.reject_semantic("operand type mismatch in additive expression *")
+
         while self.current_token and self.current_token[0] in ["+", "-"] \
                 and self.accepted is not False:
             self.add_operation()
-            self.term()
+            term_type = self.term(additive_expression_type)
+
+            if term_type != additive_expression_type:
+                self.reject_semantic("operand type mismatch in additive expression **")
 
         self.end()
 
@@ -539,11 +566,17 @@ class Parser(object):
     def term(self, term_type=None):
 
         self.start()
-        term_type = self.factor(term_type)
+        factor_type = self.factor(term_type)
+        if not term_type:
+            term_type = factor_type
+
         while self.current_token and self.current_token[0] in ["*", "/"] \
                 and self.accepted is not False:
             self.multiply_operation()
-            self.factor(term_type)
+
+            factor_type = self.factor(term_type)
+            if factor_type != term_type:
+                self.reject_semantic("operand type mismatch in term *")
 
         self.end()
 
@@ -580,17 +613,35 @@ class Parser(object):
         self.calling_function = self.last_token[0]
 
         if self.current_token and self.current_token[1] == "IDENTIFIER":
+            var_type = self.symbol_table.load_type(self.current_token[0], self.scope)
+            if not call_or_var_type:
+                call_or_var_type = var_type
+            elif call_or_var_type != var_type:
+                self.reject_semantic("operand type mismatch in call_or_var *")
             self.match("IDENTIFIER")
             self.calling_function = self.last_token[0]
 
         if self.current_token == ["(", "OPERATORS"]:
-            call_or_var_type = self.call()
+            call_type = self.call()
+            if not call_or_var_type:
+                call_or_var_type = call_type
+            elif call_type != call_or_var_type:
+                self.reject_semantic("operand type mismatch in call_or_var **")
         else:
             active_symbol = self.symbol_table.exists(self.current_token[0], self.scope)
             if active_symbol:
-                call_or_var_type = self.var(active_symbol.type)
+                var_type = self.var(active_symbol.type)
+                if not call_or_var_type:
+                    call_or_var_type = var_type
+                elif call_or_var_type != var_type:
+                    self.reject_semantic("operand type mismatch in call_or_var ***")
+
             else:
-                call_or_var_type = self.var(call_or_var_type)
+                var_type = self.var(call_or_var_type)
+                if not call_or_var_type:
+                    call_or_var_type = var_type
+                elif call_or_var_type != var_type:
+                    self.reject_semantic("operand type mismatch in call_or_var ****")
 
         self.calling_function = None
 
