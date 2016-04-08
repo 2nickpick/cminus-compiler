@@ -25,7 +25,10 @@ class Parser(object):
         self.current_symbol = None
         self.scope = 0
 
+        # code generation
         self.quadruples = []  # generated opcodes
+        self.temps = []  # temporary variables needed for code generation
+        self.backpatches = []  # codes in table needed to be patched
 
         self.parsing_main = False
         self.main_function_exists = False
@@ -128,6 +131,10 @@ class Parser(object):
                 self.reject_semantic("Symbol already exists in scope: " + current_symbol.identifier)
 
             if self.current_token == ["(", "OPERATORS"]:
+
+                size = self.calculate_quadruple_size(type, [False, None])
+                self.add_quadruple("func", identifier, type, size)
+
                 if self.found_void_type:
                     self.parsing_void_function = True
                 if self.found_int_type:
@@ -146,16 +153,7 @@ class Parser(object):
 
             elif self.current_token and self.current_token[0] in ['[', ';']:
                 array_info = self.var_declaration()
-
-            size = 0
-            if type is not "void":
-                size = 4
-                if array_info[0] and array_info[1]:
-                    size *= array_info[1]
-
-            if is_function:
-                self.add_quadruple("func", identifier, type, size)
-            else:
+                size = self.calculate_quadruple_size(type, array_info)
                 self.add_quadruple("alloc", size, "", identifier)
 
             self.parsing_main = False
@@ -276,15 +274,20 @@ class Parser(object):
                 self.reject_semantic("Void parameter cannot be named: " + str(self.calling_function) + ", " + self.current_token[0])
             self.match("IDENTIFIER")
 
+            array_info = [False, None]
             if self.current_token == ['[', "OPERATORS"]:
                 type += "[]"
                 self.match('OPERATORS', '[')
                 self.match('OPERATORS', ']')
+                array_info = [True, 1]
 
             self.current_symbol.set_type(type)
 
             if not self.symbol_table.add_symbol(self.current_symbol):
                 self.reject_semantic("Symbol already exists in scope: " + identifier)
+
+            size = self.calculate_quadruple_size(type, array_info)
+            self.add_quadruple("alloc", size, "", identifier)
 
         self.current_symbol = None
 
@@ -557,6 +560,7 @@ class Parser(object):
 
         while self.current_token and self.current_token[0] in ["+", "-"] \
                 and self.accepted is not False:
+            opcode = "add" if self.current_token[0] == "+" else "sub"
             self.add_operation()
             term_type = self.term(additive_expression_type)
 
@@ -623,7 +627,13 @@ class Parser(object):
 
         while self.current_token and self.current_token[0] in ["*", "/"] \
                 and self.accepted is not False:
+            identifier = self.last_token[0]
+            opcode = "times" if self.current_token[0] == "*" else "div"
             self.multiply_operation()
+
+            size = self.calculate_quadruple_size(term_type, [False, None])
+            self.add_quadruple(opcode, identifier, self.current_token[0], "_t"+str(len(self.temps)))
+            self.temps.append(len(self.temps))
 
             factor_type = self.factor(term_type)
             if factor_type != term_type:
@@ -838,6 +848,16 @@ class Parser(object):
     # generate code
     def add_quadruple(self, opcode, operand1, operand2, result):
         self.quadruples.append([len(self.quadruples)+1, opcode, operand1, operand2, result])
+
+    #calculate size of a new quadruple
+    def calculate_quadruple_size(self, type, array_info):
+        size = 0
+        if type is not "void":
+            size = 4
+            if array_info[0] and array_info[1]:
+                size *= array_info[1]
+
+        return size
 
     # debug output for entering a recursive function
     def start(self):
