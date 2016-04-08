@@ -19,11 +19,13 @@ class Parser(object):
         self.indentation = 0
         self.tokens = tokens
         self.debug = False
-        self.debug_semantics = False
+        self.debug_semantics = True
         self.accepted = True
         self.symbol_table = symbol_table.SymbolTable()
         self.current_symbol = None
         self.scope = 0
+
+        self.quadruples = []  # generated opcodes
 
         self.parsing_main = False
         self.main_function_exists = False
@@ -91,7 +93,7 @@ class Parser(object):
             current_symbol = symbol_table.Symbol()
             type = self.current_token[0]
             current_symbol.set_scope(self.scope)
-            is_array = False
+            array_info = [False, 0]
 
             if self.current_token[0] == "void":
                 self.found_void_type = True
@@ -102,20 +104,23 @@ class Parser(object):
 
             self.type_specifier()
 
-            current_symbol.set_identifier(self.current_token[0])
+            identifier = self.current_token[0]
+            current_symbol.set_identifier(identifier)
             if self.current_token[0] == "main":
                 self.parsing_main = True
 
             self.match("IDENTIFIER")
-
 
             if self.current_token == ["[", "OPERATORS"]:
                 type += "[]"
 
             current_symbol.set_type(type)
 
+            is_function = False
             if self.current_token == ["(", "OPERATORS"]:
-                current_symbol.set_is_function(True)
+                is_function = True
+                current_symbol.set_is_function(is_function)
+
             elif self.found_void_type:
                 self.reject_semantic("invalid type for variable, void")
 
@@ -140,10 +145,18 @@ class Parser(object):
                 self.parsing_float_function = False
 
             elif self.current_token and self.current_token[0] in ['[', ';']:
-                is_array = self.var_declaration()
+                array_info = self.var_declaration()
 
-            if is_array:
-                type += "[]"
+            size = 0
+            if type is not "void":
+                size = 4
+                if array_info[0] and array_info[1]:
+                    size *= array_info[1]
+
+            if is_function:
+                self.add_quadruple("func", identifier, type, size)
+            else:
+                self.add_quadruple("alloc", size, "", identifier)
 
             self.parsing_main = False
 
@@ -154,17 +167,19 @@ class Parser(object):
         self.start()
 
         is_array = False
+        size = 0
+
         if self.current_token == ['[', 'OPERATORS']:
             is_array = True
             self.match("OPERATORS", "[")
-            self.integer()
+            size = self.integer()
             self.match("OPERATORS", "]")
 
         self.match("OPERATORS", ";")
 
         self.end()
 
-        return is_array
+        return [is_array, size]
 
     # function-declaration -> type-specifier ( params ) compound-statement
     def function_declaration(self):
@@ -197,16 +212,14 @@ class Parser(object):
     # integer -> NUM
     def integer(self):
         self.start()
-        self.match("NUMBER")
+        match = self.match("NUMBER")
         self.end()
 
-        return "int"
+        return int(match)
 
     # any-number -> NUM | FLOAT
     def any_number(self):
         self.start()
-
-        any_number_type = None
 
         if self.current_token and self.current_token[1] == "NUMBER":
             self.match("NUMBER")
@@ -309,9 +322,9 @@ class Parser(object):
 
             self.current_symbol.set_identifier(self.current_token[0])
             self.match("IDENTIFIER")
-            is_array = self.var_declaration()
+            array_info = self.var_declaration()
 
-            if is_array:
+            if array_info[0]:
                 self.current_symbol.set_type(type+"[]")
 
             if not self.symbol_table.add_symbol(self.current_symbol):
@@ -781,28 +794,24 @@ class Parser(object):
 
     # accept a token out from the input stream
     def match(self, token_type, token_value=None):
-        # if self.debug:
-        #     if token_value is None:
-        #         print("Check if current token is any token of type '" + token_type + "'")
-        #     else:
-        #         print("Check if current token is a '" + token_type + "' with a value of " + str(token_value))
-        #
-        #     print(self.current_token)
-
         if self.current_token is not None and self.current_token[1] == token_type:
             if token_value is not None:
                 if self.current_token[0] == token_value:
                     if self.debug:
                         print("\t"*self.indentation + "Token matched (by value): " + str(self.current_token))
+                    return_value = self.current_token[0]
                     self.next_token()
-                    return
+                    return return_value
             else:
                 if self.debug:
                     print("\t"*self.indentation + "Token matched (by type): " + str(self.current_token))
+                return_value = self.current_token[0]
                 self.next_token()
-                return
+                return return_value
 
         self.reject(token_type, token_value)
+
+        return None
 
     # advance the parser to the next token
     def next_token(self):
@@ -825,6 +834,10 @@ class Parser(object):
         if self.accepted is True and self.debug_semantics:
             print("Semantic Rejection: " + reason)
         self.accepted = False
+
+    # generate code
+    def add_quadruple(self, opcode, operand1, operand2, result):
+        self.quadruples.append([len(self.quadruples)+1, opcode, operand1, operand2, result])
 
     # debug output for entering a recursive function
     def start(self):

@@ -6,6 +6,8 @@
 #
 import sys
 from collections import deque
+import locale
+locale.setlocale(locale.LC_NUMERIC, "")
 
 #   Error
 #   Print Error Message to Screen
@@ -44,3 +46,4 @@ def load_file(file):
 
 def deepcopy(arr):
     return [row[:] for row in arr]
+

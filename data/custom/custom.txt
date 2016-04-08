@@ -1,0 +1,24 @@
+int x;
+float y;
+float z[10];
+
+void main(void)
+{
+    int x;
+    int y;
+    int z;
+    int m;
+    while(x + 3 > 5)
+    {
+        x = y + m / z;
+        m = x - y + z * m / z;
+    }
+}
+
+int test(int x, float y) {
+    return 9;
+}
+
+float force(void) {
+    return 9.5;
+}

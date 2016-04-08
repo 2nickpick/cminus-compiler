@@ -9,11 +9,14 @@
 #
 
 from __future__ import print_function
+
+import glob
 import sys
 from lib import util
 from lib.lexical_analyzer import LexicalAnalyzer
 from lib.parser import Parser
-import glob
+from lib.prettytable import PrettyTable
+
 __author__ = 'Nicholas Pickering'
 
 filename = 0
@@ -60,5 +63,18 @@ for filename in files:
         no_errors = False
         print(filename + ": " + parse_result + "\n", end="")
 
+    table = PrettyTable(["i", "opcode", "operand1", "operand2", "result"])
+
+    table.align["i"] = "r" # Left align city names
+    table.align["opcode"] = "r" # Left align city names
+    table.align["operand1"] = "r" # Left align city names
+    table.align["operand2"] = "r" # Left align city names
+    table.align["result"] = "r" # Left align city names
+    for quadruple in parser.quadruples:
+        table.add_row(quadruple)
+
+    print(table)
+
 if no_errors:
     print("All Tests Passed!")
+
