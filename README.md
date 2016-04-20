@@ -1,27 +1,33 @@
 Nicholas Pickering
 Contruction of Language Translators COP4620
-Project 3 - Semantics
+Project 4 - Code Generation
 Professor Eggen
-Date Due: 3/31/2016
-Date Submitted: 3/31/2016
+Date Due: 4/19/2016
+Date Submitted: 4/19/2016
 
 # Introduction
-This project is an effort to construct a semantic analyzer.
-The semantic analyzer provides appropriate checking for errors not included in the grammar, but defined by the
-language.
+This project is an effort to generate quadruples for execution on a processor.
+The code generation takes the results of the parser and semantic analyzer, and breaks them into
+bits of code called quadruples.
 
-# Semantic Analysis Caveats
-The semantic analysis treats function identifiers the same as variable identifiers, as such a variable cannot take
-on the name of a function, or vice versa.
+Quadruples have the following form:
+[index, opcode, operand1, operand2, result]
 
 # Invoking the application
 Invoke the application by calling:
-    ./p3 filename
+    ./p4 filename
 
     where filename is the path to the C- program to parse.
 
 # Main
 The entry point to the application is main.py.
+
+# Coden Generation Program Flow
+The output created by the Lexical Analyzer/Parser is further processed to generate a table of quadruples -
+executable bits of code.
+
+The output result is the table listing of the generated quadruples, in the proper order to be executed by a
+processor.
 
 # Lexical Analyzer Program Flow
 The input file is processed line by line, character by character. At the beginning of a new token, the analyzer
@@ -46,7 +52,6 @@ token stack against semantic rules of the C- language.
 # Output Files
 This program produces output to the console.
 
-In the semantics state, the program simply outputs "ACCEPT" or "REJECT" (with no newlines) depending on
-if the input is parsable by the grammar and semantically valid.
+In the code generation state, the program outputs a table of quadruples.
 
-An example of semantic analysis output is saved to the output directory.
+An example of code generation output is saved to the output directory.

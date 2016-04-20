@@ -13,6 +13,7 @@ import sys
 from lib import util
 from lib.lexical_analyzer import LexicalAnalyzer
 from lib.parser import Parser
+from lib.prettytable import PrettyTable
 
 __author__ = 'Nicholas Pickering'
 
@@ -41,7 +42,17 @@ if len(tokens) > 0:
 parser = Parser(tokens)
 parse_result = parser.parse()
 
-print(parse_result, end="")
+table = PrettyTable(["i", "opcode", "operand1", "operand2", "result"])
+
+table.align["i"] = "r" # Left align city names
+table.align["opcode"] = "r" # Left align city names
+table.align["operand1"] = "r" # Left align city names
+table.align["operand2"] = "r" # Left align city names
+table.align["result"] = "r" # Left align city names
+for quadruple in parser.quadruples:
+    table.add_row(quadruple)
+
+print(table)
 
 # print("---------------------------------------\n")
 #
