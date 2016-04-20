@@ -1,0 +1,21 @@
+void main(void)
+{
+   int x[10];
+   int y;
+   y = (x[5] + 2) * y;
+}
+
+/*
+
+----------------------------------------------------
+
+1	func	  main		void		0
+2   alloc 	  40		            x
+3	alloc 	  4			            y
+4	disp      x			20			_t0
+5   add   	  _t0		2			_t1
+6   mult      _t1       y           _t2
+7	assign	  _t2					y
+8	end		  func		main
+
+*/

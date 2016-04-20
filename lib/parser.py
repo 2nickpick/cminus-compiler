@@ -29,6 +29,7 @@ class Parser(object):
         self.quadruples = []  # generated opcodes
         self.temps = []  # temporary variables needed for code generation
         self.backpatches = []  # codes in table needed to be patched
+        self.displacements = [] # holds generated displacement array vars
 
         self.parsing_main = False
         self.main_function_exists = False
@@ -132,9 +133,6 @@ class Parser(object):
 
             if self.current_token == ["(", "OPERATORS"]:
 
-                size = self.calculate_quadruple_size(type, [False, None])
-                self.add_quadruple("func", identifier, type, size)
-
                 if self.found_void_type:
                     self.parsing_void_function = True
                 if self.found_int_type:
@@ -142,7 +140,10 @@ class Parser(object):
                 if self.found_float_type:
                     self.parsing_float_function = True
 
-                self.function_declaration()
+                function_quadruple = len(self.quadruples)
+                self.add_quadruple("func", identifier, type, 0)
+                param_count = self.function_declaration()
+                self.apply_functionpatch(function_quadruple, param_count)
 
                 self.found_void_type = False
                 self.parsing_void_function = False
@@ -150,6 +151,8 @@ class Parser(object):
                 self.parsing_int_function = False
                 self.found_float_type = False
                 self.parsing_float_function = False
+
+                self.add_quadruple("end", "func", identifier, "")
 
             elif self.current_token and self.current_token[0] in ['[', ';']:
                 array_info = self.var_declaration()
@@ -186,7 +189,7 @@ class Parser(object):
         calling_function = self.last_token[0]
 
         self.match("OPERATORS", "(")
-        self.params(calling_function)
+        param_count = self.params(calling_function)
         self.match("OPERATORS", ")")
         self.compound_statement(calling_function)
 
@@ -194,6 +197,8 @@ class Parser(object):
             self.main_function_exists = True
 
         self.end()
+
+        return param_count
 
     # type-specifier -> int | void | float
     def type_specifier(self):
@@ -234,26 +239,34 @@ class Parser(object):
     def params(self, calling_function):
         self.start()
 
-        self.params_list(calling_function)
+        param_count = self.params_list(calling_function)
 
         self.end()
+
+        return param_count
 
     # params-list -> params-list , param | param
     def params_list(self, calling_function):
         self.start()
 
-        self.param(calling_function)
+        param_count = 0
+
+        param_count += self.param(calling_function)
         while self.current_token == [",", "OPERATORS"] \
                 and self.accepted is not False:
             self.match("OPERATORS", ",")
-            self.param(calling_function)
+            param_count += self.param(calling_function)
 
         self.end()
+
+        return param_count
 
     # param -> type-specifier ID | type-specifier ID [ NUM ]
     def param(self, calling_function):
 
         self.start()
+
+        param_count = 0
 
         self.current_symbol = symbol_table.Symbol()
         self.current_symbol.set_scope(self.scope+1)
@@ -262,6 +275,10 @@ class Parser(object):
         is_void = self.current_token == ["void", "KEYWORD"]
         type = self.current_token[0]
         self.type_specifier()
+
+        if self.current_token[1] == "IDENTIFIER":
+            self.add_quadruple("param", "", "", self.current_token[0])
+            param_count = 1
 
         is_void_with_identifier = is_void and \
             self.current_token and self.current_token[1] == "IDENTIFIER"
@@ -293,14 +310,18 @@ class Parser(object):
 
         self.end()
 
+        return param_count
+
     # compound-statement -> { local-declarations statement-list }
     def compound_statement(self, calling_function):
         self.start()
         self.match("OPERATORS", "{")
+
         self.scope += 1
         self.local_declarations()
         self.statement_list(calling_function)
         self.match("OPERATORS", "}")
+
         self.symbol_table.destroy_scope(self.scope)
         self.scope -= 1
         self.end()
@@ -324,6 +345,7 @@ class Parser(object):
                 self.reject_semantic("variables with type void are not permitted: " + str(self.current_token[0]))
 
             self.current_symbol.set_identifier(self.current_token[0])
+            identifier = self.current_token[0]
             self.match("IDENTIFIER")
             array_info = self.var_declaration()
 
@@ -332,6 +354,9 @@ class Parser(object):
 
             if not self.symbol_table.add_symbol(self.current_symbol):
                 self.reject_semantic("Symbol already exists in scope: " + self.current_symbol.identifier)
+
+            size = self.calculate_quadruple_size(type, array_info)
+            self.add_quadruple("alloc", size, "", identifier)
 
             self.current_symbol = None
 
@@ -356,7 +381,14 @@ class Parser(object):
         elif self.current_token[0] == "return":
             self.return_statement(calling_function)
         elif self.current_token[0] == "{":
+            self.add_quadruple("block", "", "", "")
             self.compound_statement(calling_function)
+            self.add_quadruple("end", "block", "", "")
+
+            if len(self.backpatches) > 0:
+                used_patch = self.apply_backpatch(len(self.quadruples)+2)
+                self.add_quadruple("BR", "", "", used_patch[0])
+
         elif self.current_token[0] == ";":
             self.empty_statement()
         else:
@@ -412,7 +444,9 @@ class Parser(object):
                 if self.current_token and self.current_token[0] == "[" and calling_symbol_type.endwith("[]"):
                     calling_symbol_type = calling_symbol_type[:-2]
 
-                expression_type = self.expression(calling_symbol_type)
+                expression_type, return_temp = self.expression(calling_symbol_type)
+
+                self.add_quadruple("return", "", "", "_t"+str(self.temps[len(self.temps)-1]))
 
                 if not calling_symbol:
                     self.reject_semantic("function is undefined... eh?")
@@ -456,8 +490,12 @@ class Parser(object):
 
         self.start()
 
+        identifier = self.last_token[0]
+
         self.match("OPERATORS", "=")
-        expression_type = self.expression(assignment_statement_type)
+        expression_type, assignment_temp = self.expression(assignment_statement_type)
+
+        self.add_quadruple("assign", "_t"+str(self.temps[len(self.temps)-1]), "", identifier)
 
         if expression_type != assignment_statement_type:
             self.reject_semantic("attempted to assign a " + str(expression_type) + " to " + \
@@ -470,6 +508,8 @@ class Parser(object):
     # expression -> ID var assignment-expression | simple-expression
     def expression(self, expression_type=None):
         self.start()
+
+        expression_temp = None
 
         if self.current_token and self.current_token[1] == "IDENTIFIER":
             active_symbol = self.symbol_table.exists(self.current_token[0], self.scope)
@@ -493,7 +533,7 @@ class Parser(object):
                 elif expression_type != active_symbol_type:
                     self.reject_semantic("operand type mismatch in expression *")
 
-                var_type = self.var(expression_type)
+                var_type, expression_temp = self.var(expression_type)
                 if expression_type != var_type:
                     self.reject_semantic("operand type mismatch in expression **")
 
@@ -504,14 +544,14 @@ class Parser(object):
                         self.reject_semantic("operand type mismatch in expression ***")
 
                 else:
-                    simple_expression_type = self.simple_expression(expression_type)
+                    simple_expression_type, expression_temp = self.simple_expression(expression_type)
 
                     if expression_type != simple_expression_type:
                         self.reject_semantic("operand type mismatch in expression ***")
             else:
                 self.reject_semantic("Undeclared identifier: " + self.current_token[0])
         else:
-            simple_expression_type = self.simple_expression(expression_type)
+            simple_expression_type, expression_temp = self.simple_expression(expression_type)
 
             if not expression_type:
                 expression_type = simple_expression_type
@@ -520,39 +560,67 @@ class Parser(object):
 
         self.end()
 
-        return expression_type
+        return expression_type, expression_temp
 
     # simple-expression -> additive-expression relational-expression
     def simple_expression(self, simple_expression_type=None):
 
         self.start()
 
-        simple_expression_type = self.additive_expression(simple_expression_type)
-        self.relational_expression(simple_expression_type)
+        backpatch_position = len(self.quadruples)+1
+        simple_expression_type, simple_expression_temp = self.additive_expression(simple_expression_type)
+        self.relational_expression(simple_expression_type, backpatch_position)
 
         self.end()
 
-        return simple_expression_type
+        return simple_expression_type, simple_expression_temp
 
     # relational-expression -> relational-operation additive expression relational-operation | @
-    def relational_expression(self, relational_expression_type):
+    def relational_expression(self, relational_expression_type, backpatch_position):
 
         self.start()
+
+        relational_expression_temp = None
+
         while self.current_token and self.current_token[0] in ['<=', '<', '>', '>=', '==', '!='] \
                 and self.accepted is not False:
+            operation = self.current_token[0]
+
             self.relational_operation()
-            relational_expression_type = self.additive_expression(relational_expression_type)
+
+            self.add_quadruple("comp", "_t"+str(self.temps[len(self.temps)-1]), self.current_token[0], "_t"+str(len(self.temps)))
+            relational_expression_temp = len(self.temps)
+            self.temps.append(relational_expression_temp)
+
+            opcode = ""
+            if operation == "<=":
+                opcode = "BRGT"
+            elif operation == "<":
+                opcode = "BRGEQ"
+            elif operation == ">":
+                opcode = "BRLEQ"
+            elif operation == ">=":
+                opcode = "BRLT"
+            elif operation == "==":
+                opcode = "BRNEQ"
+            elif operation == "!=":
+                opcode = "BREQ"
+
+            self.add_quadruple(opcode, "_t"+str(self.temps[len(self.temps)-1]), "", "_bp")
+            self.add_backpatch(backpatch_position, len(self.quadruples))
+
+            relational_expression_type, relational_expression_temp = self.additive_expression(relational_expression_type)
 
         self.end()
 
-        return relational_expression_type
+        return relational_expression_type, relational_expression_temp
 
     # additive-expression -> term | add-operation term additive-expression
     def additive_expression(self, additive_expression_type=None):
 
         self.start()
 
-        term_type = self.term(additive_expression_type)
+        term_type, additive_expression_temp = self.term(additive_expression_type)
         if not additive_expression_type:
             additive_expression_type = term_type
         elif additive_expression_type != term_type:
@@ -561,15 +629,39 @@ class Parser(object):
         while self.current_token and self.current_token[0] in ["+", "-"] \
                 and self.accepted is not False:
             opcode = "add" if self.current_token[0] == "+" else "sub"
+
+            operand1 = "1"
+            if additive_expression_temp is not None:
+                operand1 = "_t"+str(additive_expression_temp)
+            elif self.last_token[1] == "IDENTIFIER":
+                operand1 = self.last_token[0]
+            elif len(self.displacements) > 0:
+                operand1 = self.displacements.pop()
+                operand1 = "_t"+str(operand1[2])
+
             self.add_operation()
-            term_type = self.term(additive_expression_type)
+
+            term_type, additive_expression_temp = self.term(additive_expression_type)
+
+            operand2 = "2"
+            if additive_expression_temp is not None:
+                operand2 = "_t"+str(additive_expression_temp)
+            elif self.last_token[1] == "IDENTIFIER":
+                operand2 = self.last_token[0]
+            elif len(self.displacements) > 0:
+                operand2 = self.displacements.pop()
+                operand2 = "_t"+str(operand2[2])
+
+            self.add_quadruple(opcode, operand1, operand2, "_t"+str(len(self.temps)))
+            additive_expression_temp = len(self.temps)
+            self.temps.append(additive_expression_temp)
 
             if term_type != additive_expression_type:
                 self.reject_semantic("operand type mismatch in additive expression **")
 
         self.end()
 
-        return additive_expression_type
+        return additive_expression_type, additive_expression_temp
 
     # add-operation -> + | -
     def add_operation(self):
@@ -617,7 +709,7 @@ class Parser(object):
 
         self.start()
 
-        factor_type = self.factor(term_type)
+        factor_type, term_temp = self.factor(term_type)
         if not term_type:
             term_type = factor_type
             if self.current_token == ["[", "OPERATORS"] and term_type.endswith("[]"):
@@ -627,25 +719,47 @@ class Parser(object):
 
         while self.current_token and self.current_token[0] in ["*", "/"] \
                 and self.accepted is not False:
-            identifier = self.last_token[0]
-            opcode = "times" if self.current_token[0] == "*" else "div"
+
+            opcode = "mult" if self.current_token[0] == "*" else "div"
+
+            operand1 = "1"
+            if term_temp is not None:
+                operand1 = "_t"+str(term_temp)
+            elif self.last_token[1] == "IDENTIFIER":
+                operand1 = self.last_token[0]
+            elif len(self.displacements) > 0:
+                operand1 = self.displacements.pop()
+                operand1 = "_t"+str(operand1[2])
+
             self.multiply_operation()
 
-            size = self.calculate_quadruple_size(term_type, [False, None])
-            self.add_quadruple(opcode, identifier, self.current_token[0], "_t"+str(len(self.temps)))
-            self.temps.append(len(self.temps))
+            factor_type, term_temp = self.factor(term_type)
 
-            factor_type = self.factor(term_type)
+            operand2 = "2"
+            if term_temp is not None:
+                operand2 = "_t"+str(term_temp)
+            elif self.last_token[1] == "IDENTIFIER":
+                operand2 = self.last_token[0]
+            elif len(self.displacements) > 0:
+                operand2 = self.displacements.pop()
+                operand2 = "_t"+str(operand2[2])
+
+            self.add_quadruple(opcode, operand1, operand2, "_t"+str(len(self.temps)))
+            term_temp = len(self.temps)
+            self.temps.append(term_temp)
+
             if factor_type != term_type:
                 self.reject_semantic("operand type mismatch in term **")
 
         self.end()
 
-        return term_type
+        return term_type, term_temp
 
     # factor -> ( expression ) | call | var | NUM | FLOAT
     def factor(self, factor_type=None):
         self.start()
+
+        factor_temp = None
 
         if self.current_token == ["(", "OPERATORS"]:
             if self.last_token and self.last_token[1] == "IDENTIFIER":
@@ -653,19 +767,19 @@ class Parser(object):
                     self.reject_semantic("" + self.last_token[0] + " is not a function")
 
                 self.calling_function = self.last_token[0]
-                factor_type = self.call()
+                factor_type, factor_temp = self.call()
             else:
                 self.match("OPERATORS", "(")
-                factor_type = self.expression(factor_type)
+                factor_type, factor_temp = self.expression(factor_type)
                 self.match("OPERATORS", ")")
         elif self.current_token and self.current_token[1] in ["NUMBER", "FLOAT"]:
             factor_type = self.any_number()
         else:
-            factor_type = self.call_or_var(factor_type)
+            factor_type, factor_temp = self.call_or_var(factor_type)
 
         self.end()
 
-        return factor_type
+        return factor_type, factor_temp
 
     # call-or-var -> ID | call | var
     def call_or_var(self, call_or_var_type=None):
@@ -688,7 +802,7 @@ class Parser(object):
             self.calling_function = self.last_token[0]
 
         if self.current_token == ["(", "OPERATORS"]:
-            call_type = self.call()
+            call_type, call_or_var_temp = self.call()
             if not call_or_var_type:
                 call_or_var_type = call_type
             elif call_type != call_or_var_type:
@@ -696,14 +810,14 @@ class Parser(object):
         else:
             active_symbol = self.symbol_table.exists(self.current_token[0], self.scope)
             if active_symbol:
-                var_type = self.var(active_symbol.type)
+                var_type, call_or_var_temp = self.var(active_symbol.type)
                 if not call_or_var_type:
                     call_or_var_type = var_type
                 elif call_or_var_type != var_type:
                     self.reject_semantic("operand type mismatch in call_or_var ***")
 
             else:
-                var_type = self.var(call_or_var_type)
+                var_type, call_or_var_temp = self.var(call_or_var_type)
                 if not call_or_var_type:
                     call_or_var_type = var_type
                 elif call_or_var_type != var_type:
@@ -713,7 +827,7 @@ class Parser(object):
 
         self.end()
 
-        return call_or_var_type
+        return call_or_var_type, call_or_var_temp
 
     # call -> ( args )
     def call(self):
@@ -728,6 +842,10 @@ class Parser(object):
         args_parsed = self.args()
         self.match("OPERATORS", ")")
 
+        self.add_quadruple("call", called_function, len(args_parsed), "_t"+str(len(self.temps)))
+        call_temp = len(self.temps)
+        self.temps.append(call_temp)
+
         if len(args_parsed) != len(function_params):
             self.reject_semantic("Mismatched number of arguments for '" + str(called_function) + "'. Found " +
                                  str(len(args_parsed)) + ", Expected " + str(len(function_params)))
@@ -741,16 +859,21 @@ class Parser(object):
 
         self.end()
 
-        return call_type
+        return call_type, call_temp
 
     # var -> [ expression ] | @
     def var(self, var_type):
 
         self.start()
 
+        var_temp = None
+
+        identifier = self.last_token[0]
+
         if self.current_token and self.current_token[1] == "IDENTIFIER":
+            identifier = self.current_token[0]
             self.match("IDENTIFIER")
-            var_type = self.var(var_type)
+            var_type, var_temp = self.var(var_type)
 
         if self.last_token and self.last_token[1] == "IDENTIFIER" and self.current_token[0] != "(":
             if not self.symbol_table.var_exists(self.last_token[0], self.scope):
@@ -763,14 +886,22 @@ class Parser(object):
                 # remove [], value was de-referenced
                 var_type = var_type[:-2]
 
-            array_index_type = self.expression("int") # hard code to an int - array index should be an int
+            array_index_type, var_temp = self.expression("int") # hard code to an int - array index should be an int
             if array_index_type != "int":
                 self.reject_semantic("array index type was not int, was " + array_index_type + " instead")
+
             self.match("OPERATORS", "]")
+
+            size = self.calculate_quadruple_size(var_type, [True, 5])
+            self.add_quadruple("disp", identifier, size,  "_t"+str(len(self.temps)))
+            var_temp = len(self.temps)
+            self.temps.append(var_temp)
+            displacement = [identifier, size, var_temp]
+            self.displacements.append(displacement)
 
         self.end()
 
-        return var_type
+        return var_type, var_temp
 
     # args -> args-list | @
     def args(self):
@@ -791,12 +922,24 @@ class Parser(object):
 
         self.start()
 
-        return_args = [self.expression()]
+        arg, temp = self.expression()
+
+        if temp is not None:
+            result = "_t"+str(temp)
+        else:
+            result = "_t"+str(self.current_token[0])
+
+        self.add_quadruple("arg", "", "", result)
+
+        return_args = [arg]
 
         while self.current_token == [",", "OPERATORS"] \
                 and self.accepted is not False:
             self.match("OPERATORS", ",")
-            return_args.append(self.expression())
+
+            self.add_quadruple("arg", "", "", self.current_token[0])
+            arg, temp = self.expression()
+            return_args.append(arg)
 
         self.end()
 
@@ -834,25 +977,42 @@ class Parser(object):
 
     # an error has occurred, reject the input
     def reject(self, token_type, token_value):
-        self.accepted = False
+        # self.accepted = False  # disable failures to parse
         if self.debug:
             print("Current Token: " + str(self.current_token))
             print("Failed to match [" + str(token_type) + ", " + str(token_value) + "] in " + str(inspect.stack()[2][3]))
 
     # a semantic error has occurred, reject the input
     def reject_semantic(self, reason):
+        # self.accepted = False  # disable semantic failures
         if self.accepted is True and self.debug_semantics:
             print("Semantic Rejection: " + reason)
-        self.accepted = False
 
     # generate code
     def add_quadruple(self, opcode, operand1, operand2, result):
         self.quadruples.append([len(self.quadruples)+1, opcode, operand1, operand2, result])
 
+    # add code
+    def add_backpatch(self, backpatch_index, patch_location):
+        self.backpatches.append([backpatch_index, patch_location])
+
+    # apply backpatch
+    def apply_backpatch(self, patch_location):
+        backpatch = self.backpatches.pop()
+        self.quadruples[backpatch[1]-1][4] = patch_location
+
+        return backpatch
+
+    # apply param patch fo function
+    def apply_functionpatch(self, quadruple_index, param_count):
+        self.quadruples[quadruple_index][4] = param_count
+
+        return self.quadruples[quadruple_index]
+
     #calculate size of a new quadruple
     def calculate_quadruple_size(self, type, array_info):
         size = 0
-        if type is not "void":
+        if type != "void":
             size = 4
             if array_info[0] and array_info[1]:
                 size *= array_info[1]
